@@ -1,0 +1,60 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+let playwright;
+try { playwright = require('playwright'); }
+catch { playwright = require('C:/Users/DellUser/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'); }
+(async()=>{
+  const browser = await playwright.chromium.launch({headless:true,channel:'msedge'});
+  try {
+    const page = await browser.newPage({viewport:{width:1440,height:1000}});
+    const errors = [];
+    page.on('pageerror', e=>errors.push(e.message));
+    await page.goto('http://127.0.0.1:8766');
+    await page.getByRole('link', {name:'Open Tshego’s Kasungu workspace'}).click({timeout:5000});
+    await page.locator('[data-farm="F014"]').waitFor();
+    assert.equal(await page.locator('.map-pin').count(),8);
+    assert.match(await page.locator('#snapshot').innerText(),/2026-10-16.*2026-10-18/);
+    await page.locator('[data-farm="F043"]').click();
+    await page.locator('#survey-consent').check();
+    await page.locator('#start-checkin').click();
+    await page.getByRole('button',{name:'1. Yes',exact:true}).click();
+    await page.getByRole('button',{name:'2. Several areas',exact:true}).click();
+    await page.getByRole('button',{name:'2. More than one day',exact:true}).click();
+    await page.locator('#feedback').filter({hasText:'Check-in saved'}).waitFor();
+    assert.match(await page.locator('#farm-list .felix-farm').first().innerText(),/Mphatso Fields/);
+    assert.match(await page.locator('#selected-score').innerText(),/117/);
+    await page.locator('#plan-toggle').click();
+    await page.locator('#visit-plan').getByRole('button',{name:/Mphatso Fields/}).waitFor();
+    await page.locator('#visit-notes').fill('Fictional visit: checked water supply.');
+    await page.locator('#save-visit').click();
+    await page.locator('#selected-status').filter({hasText:'Completed'}).waitFor();
+    await page.reload();
+    await page.locator('[data-farm="F043"]').click();
+    assert.match(await page.locator('#selected-status').innerText(),/Completed/);
+    assert.match(await page.locator('#event-log').innerText(),/checked water supply/);
+    await page.locator('#survey-consent').check();
+    await page.locator('#start-checkin').click();
+    await page.getByRole('button',{name:'3. Not sure',exact:true}).click();
+    await page.getByRole('button',{name:'1. One area',exact:true}).click();
+    await page.locator('#selected-status').filter({hasText:'Visit today'}).waitFor();
+    await page.locator('#correction-choice').selectOption('Different action');
+    await page.locator('#correction-note').fill('<img src=x onerror=alert(1)>');
+    await page.locator('#save-correction').click();
+    await page.locator('#selected-action').filter({hasText:'<img src=x onerror=alert(1)>'}).waitFor();
+    assert.equal(await page.locator('#selected-action img').count(),0);
+    await page.locator('#correction-note').fill('Inspect the irrigation pump.');
+    await page.locator('#save-correction').click();
+    await page.locator('#selected-action').filter({hasText:'Inspect the irrigation pump.'}).waitFor();
+    await page.locator('#search').fill('Chulu');
+    assert.equal(await page.locator('.felix-farm').count(),1);
+    await page.locator('#search').fill('');
+    fs.mkdirSync('artifacts',{recursive:true});
+    await page.evaluate(()=>window.scrollTo(0,0));
+    await page.screenshot({path:'artifacts/felix-desktop.png',fullPage:true});
+    await page.setViewportSize({width:390,height:844});
+    await page.screenshot({path:'artifacts/felix-mobile.png',fullPage:true});
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Mobile overflow');
+    assert.deepEqual(errors,[]);
+    console.log('PASS: Kasungu navigation, map, check-in, ranking, persistence, visit, reopen, escaped notes, search, desktop/mobile.');
+  } finally { await browser.close(); }
+})().catch(error=>{console.error(error);process.exitCode=1;});

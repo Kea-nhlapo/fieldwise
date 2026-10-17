@@ -1,0 +1,58 @@
+[
+  {
+    "crop": "Maize",
+    "latitude": -13.0368,
+    "longitude": 33.4885,
+    "id": "F014",
+    "name": "Chimwemwe Farm"
+  },
+  {
+    "crop": "Groundnuts",
+    "latitude": -13.0323,
+    "longitude": 33.4918,
+    "id": "F027",
+    "name": "Kasungu North"
+  },
+  {
+    "crop": "Maize",
+    "latitude": -13.0407,
+    "longitude": 33.4932,
+    "id": "F043",
+    "name": "Mphatso Fields"
+  },
+  {
+    "crop": "Tobacco",
+    "latitude": -13.043,
+    "longitude": 33.4855,
+    "id": "F056",
+    "name": "Banda Family Farm"
+  },
+  {
+    "crop": "Vegetables",
+    "latitude": -13.0334,
+    "longitude": 33.4858,
+    "id": "F062",
+    "name": "Riverbend Growers"
+  },
+  {
+    "crop": "Maize",
+    "latitude": -13.0389,
+    "longitude": 33.4961,
+    "id": "F075",
+    "name": "Central Harvest"
+  },
+  {
+    "crop": "Vegetables",
+    "latitude": -13.0414,
+    "longitude": 33.4829,
+    "id": "F084",
+    "name": "Dedza Road Farm"
+  },
+  {
+    "crop": "Groundnuts",
+    "latitude": -13.0304,
+    "longitude": 33.4954,
+    "id": "F091",
+    "name": "Chulu Hills"
+  }
+]

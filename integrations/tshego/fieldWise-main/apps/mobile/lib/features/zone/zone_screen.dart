@@ -1,0 +1,221 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+
+import '../../app/providers.dart';
+import '../../app/theme/tokens.g.dart';
+import '../../core/ui/buttons.dart';
+import '../../core/ui/layout.dart';
+import '../recommendations/widgets/plant_prompt.dart';
+import '../shell/almanac_scaffold.dart';
+import '../shell/bottom_nav_island.dart';
+import 'widgets/observation_list.dart';
+import 'widgets/record_sheets.dart';
+import 'widgets/zone_details.dart';
+import 'widgets/zone_hero.dart';
+import 'widgets/zone_timeline.dart';
+import 'zone_view_model.dart';
+
+/// One section, in full.
+///
+/// Reached by tapping the centre card of the carousel, or by its own URL. Both
+/// arrive at the same place by the same path — the screen is handed a section
+/// id and reads everything else from local storage.
+class ZoneScreen extends ConsumerWidget {
+  final String sectionId;
+
+  const ZoneScreen({super.key, required this.sectionId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final view = ref.watch(zoneViewProvider(sectionId));
+    final actions = ref.watch(zoneActionsProvider(sectionId));
+
+    return AlmanacScaffold(
+      // Opened from Home, but a section belongs to the farm, and the island
+      // should say where the farmer is rather than where they came from.
+      destination: NavDestination.farm,
+      body: view.when(
+        loading: () => const SizedBox.shrink(),
+        error: (_, _) => _Gone(onBack: () => _back(context)),
+        data: (view) => view == null
+            ? _Gone(onBack: () => _back(context))
+            : _Zone(
+                view: view,
+                actions: actions,
+                demoPhotography: !ref.watch(farmScopeProvider).isAccount,
+              ),
+      ),
+    );
+  }
+
+  static void _back(BuildContext context) {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/home');
+    }
+  }
+}
+
+class _Zone extends StatelessWidget {
+  final ZoneView view;
+  final ZoneActions actions;
+  final bool demoPhotography;
+
+  const _Zone({
+    required this.view,
+    required this.actions,
+    required this.demoPhotography,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final section = view.section;
+
+    return ListView(
+      padding: const EdgeInsets.only(bottom: BottomNavIsland.bottomInset),
+      children: [
+        ZoneHero(
+          section: section,
+          demoPhotography: demoPhotography,
+          onBack: () => ZoneScreen._back(context),
+          onScan: () => context.go('/health/camera'),
+          onMore: () =>
+              showObservationEditor(context: context, actions: actions),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AlmanacDimens.gutter),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: AlmanacDimens.sp4),
+              ZoneDescription(description: section.section.description),
+              // The section itself — with its planting and plan — on its way
+              // to the server. A new account's first section has to arrive
+              // before anything recorded in it can.
+              if (section.section.delivery case final delivery?) ...[
+                RecordDeliveryRow(
+                  delivery: delivery,
+                  onRetry: () => actions.retryRecordSync(section.id),
+                  retryKey: ValueKey('retry-${section.id}'),
+                ),
+                const SizedBox(height: AlmanacDimens.sp3),
+              ],
+
+              // Empty ground is the one thing on this screen a farmer can act
+              // on immediately, so it leads — above the metrics, which for an
+              // unplanted section are four honest dashes.
+              if (section.isAvailable) ...[
+                PlantPromptCard(
+                  sectionName: section.name,
+                  onAsk: () => context.go('/farm/zone/${section.id}/plant'),
+                ),
+                const SizedBox(height: AlmanacDimens.sp2),
+              ],
+
+              ZoneMetrics(section: section, today: view.today),
+
+              SectionHeader(
+                title: 'Additional details',
+                actionLabel: 'Edit section',
+                onAction: () => showSectionEditor(
+                  context: context,
+                  actions: actions,
+                  section: section.section,
+                ),
+              ),
+              ZoneAdditionalDetails(section: section),
+
+              SectionHeader(
+                title: 'Timeline',
+                subtitle: 'Tap any step to change it',
+                actionLabel: 'Add',
+                onAction: () =>
+                    showTaskEditor(context: context, actions: actions),
+              ),
+              ZoneTimeline(
+                entries: view.timeline,
+                today: view.today,
+                onRetry: (entry) => actions.retryRecordSync(entry.task.id),
+                onTap: (entry) => showTimelineActions(
+                  context: context,
+                  entry: entry,
+                  actions: actions,
+                  today: view.today,
+                ),
+              ),
+
+              SectionHeader(
+                title: 'Recent observations',
+                actionLabel: 'Add',
+                onAction: () =>
+                    showObservationEditor(context: context, actions: actions),
+              ),
+              ObservationList(
+                observations: view.observations,
+                sectionId: section.id,
+                crop: section.planting?.crop,
+                demoPhotography: demoPhotography,
+                today: view.today,
+                onAdd: () =>
+                    showObservationEditor(context: context, actions: actions),
+                onRetry: (observation) => actions.retrySync(observation.id),
+                onTap: (observation) => showObservationActions(
+                  context: context,
+                  observation: observation,
+                  actions: actions,
+                  today: view.today,
+                ),
+              ),
+              const SizedBox(height: AlmanacDimens.sp6),
+              // Last on the screen, and outlined rather than filled: the one
+              // thing here that cannot be taken back should never be the
+              // easiest thing to hit.
+              AppDangerButton(
+                key: const Key('delete-section'),
+                label: 'Delete this section',
+                icon: LucideIcons.trash2,
+                onPressed: () async {
+                  final router = GoRouter.of(context);
+                  final deleted = await deleteSectionWithConfirmation(
+                    context: context,
+                    actions: actions,
+                    view: view,
+                  );
+                  if (deleted) router.go('/home');
+                },
+              ),
+              const SizedBox(height: AlmanacDimens.sp6),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The section was deleted while this screen was open.
+///
+/// Said as a fact, with a way back. Nothing here failed.
+class _Gone extends StatelessWidget {
+  final VoidCallback onBack;
+
+  const _Gone({required this.onBack});
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(AlmanacDimens.gutter),
+      child: EmptyState(
+        icon: LucideIcons.layers,
+        headline: 'This section is no longer on your farm',
+        body: 'It was deleted. Everything else is where you left it.',
+        actionLabel: 'Back to Home',
+        actionIcon: LucideIcons.house,
+        onAction: onBack,
+      ),
+    ),
+  );
+}

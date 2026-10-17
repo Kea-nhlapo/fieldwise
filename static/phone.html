@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Fieldwise · USSD phone</title><meta name="theme-color" content="#173c32"><link rel="icon" href="/static/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/static/style.css"><link rel="stylesheet" href="/static/theme.css"><link rel="stylesheet" href="/static/a11y.css">
+<style>
+main.phone-page>#main-content{position:absolute}
+main.phone-page{display:grid;margin-left:auto;margin-right:auto;max-width:980px;margin:0 auto;padding:28px 20px 48px;display:grid;grid-template-columns:340px 1fr;gap:40px;align-items:start}
+.handset{background:#20262a;border-radius:42px;padding:26px 20px 30px;box-shadow:inset 0 0 0 3px #3a4248}
+.earpiece{width:60px;height:6px;border-radius:6px;background:#3a4248;margin:0 auto 18px}
+.screen{background:#c9d8b4;color:#14200f;border-radius:10px;min-height:250px;padding:14px;font:15px/1.45 "Consolas","Courier New",monospace;white-space:pre-wrap;box-shadow:inset 0 2px 6px rgba(0,0,0,.25)}
+.screen[data-state=end]{background:#d8d2b4}
+.entry{display:flex;gap:8px;margin-top:14px}
+.entry input{flex:1;font:18px "Consolas",monospace;padding:10px;border-radius:10px;border:0;min-width:0}
+.keys{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.keys button{background:#343c41;color:#f2f5ef;border:0;border-radius:12px;padding:12px 0;font:600 18px var(--display);min-height:48px}
+.keys button:hover{background:#465057}
+.call{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.call button{border:0;border-radius:12px;padding:12px;font-weight:700;color:#fff;min-height:48px}
+.call .dial{background:#2f7d4f}.call .hang{background:#b4532a}
+.explain h1{font-family:var(--display);font-size:clamp(28px,3vw,40px);margin:0 0 12px}
+.explain p,.explain li{font-size:15px;line-height:1.6;color:#2f3b34}
+.explain code{background:#ece9dc;padding:1px 6px;border-radius:6px}
+.log{font:12.5px/1.5 "Consolas",monospace;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;max-height:240px;overflow:auto;white-space:pre-wrap}
+@media(max-width:820px){main.phone-page{grid-template-columns:1fr}.handset{max-width:360px;margin:0 auto}}
+</style></head>
+<body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
+<main class="phone-page"><span id="main-content" tabindex="-1"></span>
+<section aria-label="Simulated basic phone">
+  <div class="handset">
+    <div class="earpiece" aria-hidden="true"></div>
+    <div id="screen" class="screen" role="status" aria-live="polite">Dial *384*14# and press Call.</div>
+    <form id="entry" class="entry"><label class="visually-hidden" for="input">Phone input</label><input id="input" inputmode="numeric" autocomplete="off" value="*384*14#"><button class="primary-button" type="submit">Send</button></form>
+    <div class="keys" aria-label="Keypad">
+      <button type="button" data-key="1">1</button><button type="button" data-key="2">2</button><button type="button" data-key="3">3</button>
+      <button type="button" data-key="4">4</button><button type="button" data-key="5">5</button><button type="button" data-key="6">6</button>
+      <button type="button" data-key="7">7</button><button type="button" data-key="8">8</button><button type="button" data-key="9">9</button>
+      <button type="button" data-key="*">*</button><button type="button" data-key="0">0</button><button type="button" data-key="#">#</button>
+    </div>
+    <div class="call"><button type="button" class="dial" id="dial">Call</button><button type="button" class="hang" id="hang">End</button></div>
+  </div>
+</section>
+<section class="explain">
+  <span class="eyebrow">USSD · AFRICA’S TALKING CALLBACK FORMAT</span>
+  <h1>A farmer’s check-in on a basic phone</h1>
+  <p>This phone sends the same form fields Africa’s Talking sends to a USSD callback: <code>sessionId</code>, <code>serviceCode</code>, <code>phoneNumber</code> and <code>text</code>. Fieldwise answers with <code>CON</code> to keep the menu open or <code>END</code> to close it. To go live, register <code>/ussd</code> as the callback URL for a USSD code in an Africa’s Talking account.</p>
+  <ul><li>Farm numbers: 14, 27, 43, 56, 62, 75, 84 and 91.</li><li>The farmer agrees before any question. Saying no saves nothing.</li><li>The phone number is sent, as Africa’s Talking does, but Fieldwise never stores it.</li></ul>
+  <p><a class="outline-button" href="/felix">Open Felix’s workspace to see the answer arrive</a></p>
+  <h2 class="impact-group">Requests sent</h2>
+  <div id="log" class="log" aria-live="off">No requests yet.</div>
+</section>
+</main>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+let session = null, steps = [], serviceCode = '*384*14#';
+function show(text, ended) { $('screen').textContent = text; $('screen').dataset.state = ended ? 'end' : 'open'; }
+function log(line) { const el = $('log'); el.textContent = (el.textContent === 'No requests yet.' ? '' : el.textContent + '\n') + line; el.scrollTop = el.scrollHeight; }
+async function send() {
+  const body = new URLSearchParams({sessionId: session, serviceCode, phoneNumber: '+265999000000', networkCode: '65001', text: steps.join('*')});
+  log('POST /ussd  text="' + steps.join('*') + '"');
+  try {
+    const reply = await (await fetch('/ussd', {method: 'POST', body})).text();
+    log('  ← ' + reply.split('\n')[0]);
+    const ended = reply.startsWith('END');
+    show(reply.slice(4), ended);
+    if (ended) session = null;
+  } catch { show('Network error. The USSD service needs the Fieldwise server.', true); session = null; }
+  $('input').value = ''; $('input').focus();
+}
+function dial() {
+  const code = $('input').value.trim() || serviceCode;
+  const match = [...code.matchAll(/\*384\*(\d+)#/g)].pop();
+  session = 'SIM' + Date.now(); serviceCode = '*384#';
+  // A code with a farm number (*384*14#) pre-fills the first answer, as dial strings do on real networks.
+  steps = match ? [match[1]] : [];
+  send();
+}
+$('dial').onclick = dial;
+$('hang').onclick = () => { session = null; steps = []; show('Session ended. Dial *384*14# to start again.', true); $('input').value = '*384*14#'; };
+$('entry').onsubmit = event => { event.preventDefault(); if (!session) return dial(); steps.push($('input').value.trim()); send(); };
+document.querySelectorAll('[data-key]').forEach(b => b.onclick = () => { $('input').value += b.dataset.key; $('input').focus(); });
+</script>
+</body></html>

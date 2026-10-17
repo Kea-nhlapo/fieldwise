@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Fieldwise · Pilot plan</title><meta name="theme-color" content="#173c32"><link rel="manifest" href="/static/manifest.webmanifest"><link rel="icon" href="/static/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/static/style.css"><link rel="stylesheet" href="/static/impact.css"><link rel="stylesheet" href="/static/theme.css"><link rel="stylesheet" href="/static/a11y.css"><script defer src="/static/offline.js"></script>
+<style>
+.plan-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.phase{padding:20px}
+.phase h3{margin:4px 0 8px}
+.phase .when{font:600 13px var(--display);letter-spacing:.08em;color:#2c4320;background:#e2ead0;border-radius:999px;padding:4px 10px;display:inline-block}
+.phase ul{padding-left:18px;margin:10px 0 0;font-size:14px;line-height:1.55}
+.owner{font-size:13px;color:#4d5a52;margin-top:10px}
+.calc{display:grid;grid-template-columns:1.1fr 1fr;gap:20px}
+.calc-inputs{padding:22px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.calc-inputs label{display:grid;gap:6px;font-size:14px;font-weight:600}
+.calc-inputs small{font-weight:400;color:#4d5a52;font-size:12.5px}
+.calc-out{padding:22px;display:grid;gap:14px;align-content:start;background:var(--forest);color:#eef4e2;border-radius:18px}
+.calc-out strong{font:600 44px/1 var(--display);color:var(--lime)}
+.calc-out span{font-size:14px;color:#d3dfcf}
+.measure td,.measure th{font-size:14px}
+@media(max-width:1000px){.plan-grid{grid-template-columns:1fr 1fr}.calc{grid-template-columns:1fr}}
+@media(max-width:560px){.plan-grid,.calc-inputs{grid-template-columns:1fr}}
+</style></head>
+<body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
+<aside class="sidebar" aria-label="Workspace navigation"><a class="brand" href="/" aria-label="Fieldwise home"><span class="brand-icon" aria-hidden="true">≋</span>fieldwise<span class="brand-dot">.</span></a><div class="workspace">PILOT <span>PLAN</span></div><nav aria-label="Sections"><a class="active" href="#overview"><span class="ico" style="--ico:url(/static/icons/layout-dashboard.svg)" aria-hidden="true"></span> <span>Pilot steps</span></a><a href="#cost"><span class="ico" style="--ico:url(/static/icons/coins.svg)" aria-hidden="true"></span> <span>Cost per farm</span></a><a href="#measure"><span class="ico" style="--ico:url(/static/icons/list.svg)" aria-hidden="true"></span> <span>What we measure</span></a><a href="/felix"><span class="ico" style="--ico:url(/static/icons/arrow-left.svg)" aria-hidden="true"></span> <span>Kasungu workspace</span></a><a href="/impact"><span class="ico" style="--ico:url(/static/icons/arrow-left.svg)" aria-hidden="true"></span> <span>Impact metrics</span></a></nav><div class="sidebar-bottom"><small>Partner and prices are proposals until confirmed.</small></div></aside>
+<main id="overview"><span id="main-content" tabindex="-1"></span>
+<header class="topbar"><span>FIELDWISE <b>/</b> PILOT PLAN</span><a class="local" href="/ussd-simulator">Try the USSD check-in</a></header>
+<section class="intro" data-hero="pilot"><div><div class="eyebrow">KASUNGU DISTRICT · ONE SEASON</div><h1>Eleven weeks, three officers, 900 farms</h1><p>The pilot tests one claim: surveying the farms whose answers change Felix’s day finds crop problems sooner than routine visits.</p></div><p class="photo-credit">Photo: USAID Mozambique, smallholder fields, public domain</p></section>
+
+<div class="section-heading"><div><span class="eyebrow">STEPS AND OWNERS</span><h2>Who does what, and when</h2></div></div>
+<section class="plan-grid">
+  <article class="card phase"><span class="when">WEEKS 1–2</span><h3>Set up</h3><ul><li>Register the <code>/ussd</code> callback with a USSD code from Africa’s Talking.</li><li>Host Fieldwise on one small cloud server.</li><li>Confirm data protection duties with MACRA under Malawi’s Data Protection Act 2024.</li></ul><p class="owner">Owner: Fieldwise team</p></article>
+  <article class="card phase"><span class="when">WEEK 2</span><h3>Enrol and train</h3><ul><li>Enrol 300 of each officer’s farms (Malawi averages about 2,000 per worker) with farm numbers and coordinates only.</li><li>Two-hour session per officer: ranking, surveys, recording outcomes.</li><li>Farmers get their farm number and the USSD code on a printed card.</li></ul><p class="owner">Owner: Kasungu District Agriculture Office (proposed partner, not yet contacted)</p></article>
+  <article class="card phase"><span class="when">WEEKS 3–10</span><h3>Run</h3><ul><li>Officers follow the ranked list and the “who to ask next” queue.</li><li>Every visit ends with a tapped outcome, which trains the model.</li><li>Half the officers’ farms use the ranking; half keep routine visits, for comparison.</li></ul><p class="owner">Owners: extension officers; Fieldwise team on call</p></article>
+  <article class="card phase"><span class="when">WEEK 11</span><h3>Decide</h3><ul><li>Compare problem-finding rates between ranked and routine farms.</li><li>Continue and expand if ranked visits confirm problems more often and sooner.</li><li>Delete pilot data the plan no longer needs.</li></ul><p class="owner">Owners: district office and Fieldwise team</p></article>
+</section>
+
+<div class="section-heading" id="cost"><div><span class="eyebrow">COST</span><h2>Cost per farm for one season</h2></div></div>
+<section class="calc">
+  <form class="card calc-inputs" id="calc" aria-describedby="calc-note">
+    <label>Officers<input type="number" id="officers" value="3" min="1"></label>
+    <label>Farms per officer<input type="number" id="farms" value="300" min="1"></label>
+    <label>Surveys per farm per season<input type="number" id="surveys" value="4" min="0" step="1"></label>
+    <label>USSD cost per session (US$)<input type="number" id="ussd" value="0.03" min="0" step="0.005"><small>Assumption. Replace with an Africa’s Talking quote for Malawi.</small></label>
+    <label>Server per month (US$)<input type="number" id="server" value="15" min="0"><small>Assumption: one small cloud server.</small></label>
+    <label>Season length (months)<input type="number" id="months" value="3" min="1"></label>
+    <label>Maize price (US$ per kg)<input type="number" id="price" value="0.30" min="0.01" step="0.01"><small>Assumption. Replace with the local market price.</small></label>
+    <p id="calc-note" class="hint" style="grid-column:1/-1">Change any number; the totals update. Weather and soil data come from free open sources (Open-Meteo, ISRIC SoilGrids, OpenStreetMap). Check Open-Meteo’s licence terms for a funded pilot.</p>
+  </form>
+  <div class="calc-out" aria-live="polite">
+    <div><strong id="per-farm">—</strong><br><span>cost per farm for the season</span></div>
+    <div><strong id="total">—</strong><br><span>total running cost for the season</span></div>
+    <div><strong id="breakeven">—</strong><br><span>of maize each farm must keep from loss to cover its cost</span></div>
+  </div>
+</section>
+
+<div class="section-heading" id="measure"><div><span class="eyebrow">MEASURE</span><h2>What the pilot measures, and where it is already counted</h2></div></div>
+<section class="card" style="padding:8px 18px"><div class="table-scroll" tabindex="0" role="region" aria-label="Pilot measures"><table class="reference-table measure"><thead><tr><th scope="col">Question</th><th scope="col">Measure</th><th scope="col">Already in Fieldwise</th></tr></thead><tbody>
+<tr><td>Do ranked visits find more problems?</td><td>Share of visits with a confirmed problem, ranked vs routine farms</td><td>Visit outcomes and “Visits that were evidence-targeted”</td></tr>
+<tr><td>Do problems get seen sooner?</td><td>Hours from a farmer’s report to the visit</td><td>“Median report-to-visit time”</td></tr>
+<tr><td>Will farmers answer?</td><td>Survey response rate; declines</td><td>“Survey response rate”</td></tr>
+<tr><td>Is the model learning?</td><td>Confirmed-problem rate per signal over the season</td><td>“What Felix’s visits have taught the model”</td></tr>
+<tr><td>How much food is at stake?</td><td>Estimated maize at risk on farms with reported problems, checked against officer outcomes</td><td>“Maize at risk found by farmer answers”</td></tr>
+</tbody></table></div></section>
+<footer><span>Fieldwise pilot plan · figures marked as assumptions need confirming before a funding request</span><a href="/impact">Impact metrics</a></footer>
+</main>
+<script>
+'use strict';
+const v = id => Math.max(0, Number(document.getElementById(id).value) || 0);
+const usd = n => '$' + n.toLocaleString('en-US', {minimumFractionDigits: n < 10 ? 2 : 0, maximumFractionDigits: n < 10 ? 2 : 0});
+function update() {
+  const farms = v('officers') * v('farms');
+  const total = farms * v('surveys') * v('ussd') + v('server') * v('months');
+  const perFarm = farms ? total / farms : 0;
+  document.getElementById('per-farm').textContent = usd(perFarm);
+  document.getElementById('total').textContent = usd(total);
+  document.getElementById('breakeven').textContent = v('price') ? (perFarm / v('price')).toFixed(1) + ' kg' : '—';
+}
+document.getElementById('calc').addEventListener('input', update);
+update();
+</script>
+</body></html>

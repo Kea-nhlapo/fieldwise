@@ -1,0 +1,39 @@
+.impact-group{font-size:15px;font-weight:600;margin:26px 0 10px;color:var(--ink)}
+.impact-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.impact-tile{background:#fff;border:1px solid var(--line);border-radius:8px;padding:16px 18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:6px}
+.impact-tile h3{font-size:13px;font-weight:600;margin:0;color:var(--ink)}
+.impact-tile strong{font-size:32px;font-weight:500;color:var(--forest);line-height:1.1}
+.impact-tile strong small{font-size:15px;color:var(--muted);font-weight:500}
+.impact-tile strong.none{font-size:16px;color:var(--muted)}
+.impact-tile .ratio{font-size:12px;color:var(--ink);font-weight:600}
+.impact-tile p{font-size:12px;line-height:1.45;color:var(--muted);margin:0}
+.trend-card{padding:18px}
+.trend-chart svg{width:100%;height:auto;display:block}
+.trend-chart .bar:hover path{fill:#173c32}
+.table-scroll{overflow-x:auto}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.trend-card details{margin-top:10px}
+.trend-chart{max-width:760px}
+.impact-page .privacy-summary{font-size:13px}
+.reference-table{width:100%;border-collapse:collapse;font-size:13px}
+.reference-table th,.reference-table td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+.reference-table th{font-size:12px;color:var(--muted);font-weight:600}
+.reference-table td:first-child{white-space:nowrap}
+
+.impact-hero{display:block}
+.hero-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap}
+.hero-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;margin-top:34px;background:rgba(212,240,122,.22);border-radius:16px;overflow:hidden}
+.hero-stat{background:#163c30;padding:22px 22px 20px;display:grid;gap:6px;align-content:start}
+.hero-stat strong{font-size:clamp(44px,5vw,72px);font-weight:600;line-height:.95;color:var(--lime);letter-spacing:-.02em}
+.hero-stat strong small{font-size:.45em;margin-left:2px;color:#c9e07a}
+.hero-stat span{font-size:14px;color:#e2ebd8;line-height:1.35}
+.hero-stat em{font-style:normal;font-size:12px;color:#a9c0b0;letter-spacing:.04em}
+.impact-group{font-family:var(--display);font-size:22px;margin:36px 0 12px}
+.impact-tile{border-radius:18px;background:var(--card);box-shadow:var(--lift);padding:20px 22px;gap:8px}
+.impact-tile h3{font-family:var(--text);font-size:15px}
+.impact-tile strong{font-size:44px;font-weight:600;color:var(--forest)}
+.impact-tile p{font-size:13px}
+.impact-tile .ratio{font-size:13px}
+.impact-tile .meter{width:100%;height:8px}
+.trend-chart .bar path{fill:#2f5427}
+@media(max-width:900px){.hero-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}

@@ -1,0 +1,73 @@
+# Fieldwise: 6-minute demo script
+
+Numbers below come from an automated run of this exact flow (`node scripts/record-demo.cjs`). Backup screenshots for every step are in `artifacts/demo-backup/`, in order. If the Wi-Fi or the laptop fails, present from those.
+
+## Before you go on stage
+
+1. Start the app: double-click `START-FIELDWISE.cmd`.
+2. Open these tabs, in this order:
+   - `127.0.0.1:8765/felix`
+   - `127.0.0.1:8765/ussd-simulator`
+   - `127.0.0.1:8765/`
+   - `127.0.0.1:8765/impact`
+   - `127.0.0.1:8765/pilot`
+3. On the Felix tab, click **Reset demo data** (bottom of the sidebar) and confirm.
+4. Still on Felix, click **Fetch live evidence** once. This saves fresh weather and soil receipts, so if the venue Wi-Fi dies later the app still shows real, timestamped data. The OpenStreetMap request sometimes fails with a 502 or 429; the app keeps the previous map and says so on screen.
+5. Zoom the browser to 110–125% so the back row can read it.
+6. Reload every tab twice. The offline cache updates in the background, so the first load after a code change can still show the previous version.
+
+## The script
+
+Which farm sits at **Now #4** depends on the live weather you fetch, so it can change between rehearsal and stage. The script works with whichever farm is there; the reveal is always 62 → 117 points and rank 4 → 1.
+
+| Time | Say | Do |
+|---|---|---|
+| **0:00–0:40** | "In 2021/22, Malawi had one extension worker for every 2,017 farmers. That's the Ministry of Agriculture's own figure, and twice its target. Felix is one of those workers, in Kasungu. He can make maybe six visits a day, so he picks farms by habit. Fieldwise tells him which farm to visit first, and why." | Felix tab, top of the page. Point at the **Visit first** card. |
+| **0:40–1:20** | "Every score starts from public data. Each number shows where it came from and when we downloaded it: Open-Meteo weather, ISRIC soil, OpenStreetMap. No farmer data leaves the device." | Scroll to Step 1. Point at a **Fetched · current** badge and its retrieval time. |
+| **1:20–2:00** | "Public data can't see a wilting field. So we ask farmers, but only the ones whose answer would change Felix's day. For each farm, Fieldwise scores both possible answers. This farm is fourth. If the farmer says yes, it jumps into today's top three." | Scroll to **Step 3 · Choose who to ask**. Find the row marked **Now #4** and note its dial code (for example `*384*56#`). Click **Queue survey** on that row. |
+| **2:00–3:00** | "The farmer has a basic phone. They don't need an app or a data bundle; they dial a USSD code." Dial, then read the consent screen aloud: "They agree first; saying no saves nothing, and we never store the phone number." | USSD tab. Type the dial code from that row and press **Call**. Answer `1` (agree), `1` (yes, wilting), `2` (several areas), `2` (more than one day). |
+| **3:00–3:40** | "Back with Felix: that farm went from 62 to 117 points, from fourth to first. It's on today's route because a farmer answered three questions." | Felix tab, reload. Click that farm in the ranked list. Scroll to **What the farmer's answer changed**: 62 → 117, rank 4 → 1, +55. |
+| **3:40–4:20** | "Felix visits. He taps what he found, with no typing. Each outcome teaches the model. One confirmed visit moved 'hot, dry forecast' from 50% to 60%, so every other dry farm now ranks a little higher." | Scroll up to **Record a visit**. Tap **Wilting confirmed** and **Follow up in 3 days**, then **Save visit**. Scroll to **What Felix's visits have taught the model**. |
+| **4:20–5:00** | "How much food is at stake? We run the FAO's crop water model, pyfao56, and FAO-33's yield-response formula. At Siyakhula Cooperative, two weeks without irrigation puts about 445 kg of maize at risk per hectare. That's an estimate, and the formula is on screen." | South Africa tab. Point at **≈ 445 kg of maize at stake** on the Visit first card, then click **See its water balance**. |
+| **5:00–5:30** | "And we measure ourselves. Every figure here comes from a log that stores no names and no phone numbers. It works offline, and syncs when the signal returns." | Impact tab. Point at the four headline numbers. |
+| **5:30–6:00** | "Next: an 11-week pilot with three officers and 900 farms, at about 17 cents per farm per season on our current assumptions. It breaks even if each farm keeps 0.6 kg of maize from loss. We're looking for a district office to run it with." | Pilot tab. Point at **$0.17 cost per farm**. Stop. |
+
+Source for the opening figure: Government of Malawi, Ministry of Agriculture, *2021-2022 Agriculture Sector Performance Report*, November 2022, section 3.5, p. 19 ([PDF](https://docs.dcafs-tipdep-donors-mw.org/dt_docs/DOC20230126080437.pdf)). The same paragraph says government already uses mobile phones as extension channels.
+
+If you're running long, cut the South Africa step (4:20–5:00) and say the 445 kg line over the Impact page.
+
+## Questions judges will ask
+
+**"Where's the AI?"**
+Two parts. First, a Bayesian model learns from Felix's visit outcomes how often each signal turns out to be a real problem, and adjusts the scores. Second, survey targeting: we simulate both possible farmer answers and ask the farms whose answer would change the visit plan. We chose models that work with ten visits rather than ten thousand, and that run offline on a cheap server.
+
+**"Are these real farms?"**
+No. The eight Kasungu farms are Tshego's scenarios, and the five South African farms are fictional. The weather, soil and map data are real, live requests with receipts. The water model is the real pyfao56 library.
+
+**"Is the 445 kg real?"**
+It's a model estimate, using FAO-33's maize yield response factor (Ky 1.25), 600 mm of seasonal crop water and 6 t/ha potential yield on 1 ha. The pilot would check it against what officers find.
+
+**"Does the USSD actually work?"**
+The `/ussd` endpoint uses Africa's Talking's callback format: same fields, and `CON`/`END` replies. Going live means registering the endpoint against a USSD code in an Africa's Talking account. The simulator posts exactly what Africa's Talking would.
+
+**"What about data protection?"**
+In Malawi, the Data Protection Act 2024 applies, with MACRA as the regulator. In South Africa, it's POPIA. Fieldwise asks for consent before any question, stores farm numbers instead of phone numbers, lets a farm's reports be exported or deleted, and keeps impact counts free of personal data. We haven't had a compliance assessment yet; that's in pilot week 1.
+
+**"What does it cost?"**
+About $0.17 per farm per season on assumed USSD and server prices, which the pilot page labels as assumptions. Weather, soil and map data are free open sources. We need a real Africa's Talking quote for Malawi.
+
+**"What if there's no signal?"**
+The app keeps working offline. Actions wait in an outbox and sync once when the connection returns; a test checks that nothing is saved twice. Farmers only need a basic phone with network coverage for USSD.
+
+**"Why would officers trust the score?"**
+They can see every point: environment, farmer report, learned adjustment, their own correction. Felix can override any score, and the app counts how often he does.
+
+## Facts to have ready
+
+| Item | Value |
+|---|---|
+| Tests | 62 automated tests, all passing |
+| Accessibility | axe-core: 0 WCAG 2.1 AA violations on all pages, desktop and mobile |
+| Offline | Service worker caches 27 resources; outbox syncs once, no duplicates |
+| Data sources | Open-Meteo (weather), ISRIC SoilGrids (soil, CC BY 4.0), OpenStreetMap (ODbL) |
+| Models | pyfao56 (FAO-56 water balance), FAO-33 yield response, Beta-Bernoulli learning, OR-Tools routing |

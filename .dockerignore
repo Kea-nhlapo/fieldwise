@@ -1,0 +1,8 @@
+.venv
+data
+artifacts
+integrations
+tests
+scripts
+**/__pycache__
+*.md

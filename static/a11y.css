@@ -1,0 +1,20 @@
+/* Accessibility and offline-state layer, loaded after the page styles. */
+/* #738078 was ~4.1:1 on white; #56635b is ~6.2:1, meeting WCAG AA for small text. */
+:root{--muted:#56635b}
+.skip-link{position:absolute;left:12px;top:-60px;z-index:100;background:var(--forest);color:#fff;padding:10px 16px;border-radius:6px;font-weight:600;text-decoration:none}
+.skip-link:focus{top:12px}
+#main-content{display:block;height:0;outline:none}
+:where(a,button,input,select,textarea,summary,[tabindex]):focus-visible{outline:3px solid #1d6fb8;outline-offset:2px;border-radius:4px}
+.map-pin:focus-visible{outline:none}
+.map-pin:focus-visible circle{stroke:#1d6fb8;stroke-width:5}
+button,select,input:not([type=checkbox]),.text-button,.outline-button,.primary-button{min-height:36px}
+.connection{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 14px;padding:9px 14px;border-radius:8px;font-size:13px;border:1px solid var(--line);background:#fff}
+.connection::before{content:"";width:10px;height:10px;border-radius:50%;background:#2f7d4f;flex:none}
+.connection span{flex:1;min-width:200px}
+.connection[data-state=offline]{background:#fff4e5;border-color:#e9b46f}
+.connection[data-state=offline]::before{background:#b05a00}
+.connection[data-state=pending],.connection[data-state=syncing]{background:#eef4ff;border-color:#a9c3ea}
+.connection[data-state=pending]::before,.connection[data-state=syncing]::before{background:#1d6fb8}
+@media(forced-colors:active){.connection::before{forced-color-adjust:none;border:1px solid CanvasText}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+.visually-hidden{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}

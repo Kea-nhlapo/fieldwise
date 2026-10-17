@@ -1,0 +1,1 @@
+"""Fieldwise local hackathon prototype."""
