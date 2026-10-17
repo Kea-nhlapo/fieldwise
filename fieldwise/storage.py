@@ -22,6 +22,13 @@ class Store:
     def __init__(self, path):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        # WAL lets a write (for example a demo reset) commit while other requests are still reading;
+        # in the default journal mode a long read could make the write give up with 'database is locked'.
+        wal = sqlite3.connect(self.path, timeout=10)
+        try:
+            wal.execute('PRAGMA journal_mode=WAL')
+        finally:
+            wal.close()
         with self.connect() as db:
             db.execute('CREATE TABLE IF NOT EXISTS farms (id TEXT PRIMARY KEY, payload TEXT NOT NULL)')
             db.execute('CREATE TABLE IF NOT EXISTS activity (id INTEGER PRIMARY KEY, farm_id TEXT, kind TEXT, text TEXT, created_at TEXT)')

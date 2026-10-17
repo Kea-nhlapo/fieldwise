@@ -34,10 +34,11 @@ class AlertReview(BaseModel):
     state: Literal['acknowledged', 'resolved']
 
 
-def create_app(db_path=None, officer_pin_value=None):
+def create_app(db_path=None, officer_pin_value=None, ussd_key_value=None):
     app = FastAPI(title='Fieldwise local prototype')
     store = Store(db_path or ROOT / 'data' / 'fieldwise.db')
     app.mount('/static', StaticFiles(directory=ROOT / 'static'), name='static')
+    app.state.ussd_key = ussd_key_value   # None: read FIELDWISE_USSD_KEY
     register_felix(app, store, ROOT)
 
     @app.middleware('http')

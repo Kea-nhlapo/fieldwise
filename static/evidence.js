@@ -19,7 +19,7 @@ function renderEvidence(farm) {
     let value=source==='weather' ? (farm.rain_mm===null?'No current forecast':`${farm.rain_mm.toFixed(1)} mm · ${farm.heat_c.toFixed(1)} °C`) : source==='soil' ? (farm.clay_percent===null?'Clay unknown':`${farm.clay_percent.toFixed(1)}% clay`) : `${mapData.features.length} road / waterway features`;
     let validity=source==='weather' ? `${farm.weather.start} → ${farm.weather.end} · ${farm.weather.timezone}` : source==='soil' ? 'Soil observation / model issue time: not supplied' : `Map database time: ${mapData.map_base_at || 'not supplied for bundled extract'}`;
     const proof=good || previous || attempt;
-    return `<article class="card evidence-card" id="evidence-${source}"><div class="evidence-heading"><h3>${esc(context.provider)}</h3><span class="evidence-state ${context.state}">${labels[context.state]}</span></div><strong class="evidence-value">${esc(value)}</strong><p>${esc(descriptions[source])}</p><p class="validity">${esc(validity)}</p><dl><dt>Last request attempted</dt><dd>${esc(attempt?stamp(attempt.attempted_at):'No request made by this app')}</dd><dt>Last successful retrieval</dt><dd>${esc(previous?stamp(previous.completed_at):'None · bundle download time unknown')}</dd><dt>Role in this profile</dt><dd>${source==='map'?'Location context only':context.used_in_score?'Fetched input used':source==='weather'&&context.state==='bundled'?'Bundled scenario used; demonstration only':'Excluded / unknown'}</dd></dl>${failed?`<p class="evidence-failure">Latest attempt failed${attempt.http_status?' · HTTP '+attempt.http_status:''}. ${esc(attempt.error)} ${good?'Earlier valid retrieval remains in use.':''}</p>`:''}<div class="evidence-actions"><button class="outline-button" data-fetch="${source}" type="button">Fetch ${source}</button>${proof?`<a href="/api/felix/evidence/${proof.id}" target="_blank" rel="noopener" class="text-button">View request & response <span class="ico" style="--ico:url(/static/icons/arrow-up-right.svg)" aria-hidden="true"></span></a>`:''}</div>${proof?.sha256?`<small class="digest">Response SHA-256: ${esc(proof.sha256)}</small>`:''}</article>`;
+    return `<article class="card evidence-card" id="evidence-${source}"><div class="evidence-heading"><h3>${esc(context.provider)}</h3><span class="evidence-state ${context.state}">${labels[context.state]}</span></div><strong class="evidence-value">${esc(value)}</strong><p>${esc(descriptions[source])}</p><p class="validity">${esc(validity)}</p><dl><dt>Last request attempted</dt><dd>${esc(attempt?stamp(attempt.attempted_at):'No request made by this app')}</dd><dt>Last successful retrieval</dt><dd>${esc(previous?stamp(previous.completed_at):'None · bundle download time unknown')}</dd><dt>Role in this profile</dt><dd>${source==='map'?'Location context only':context.used_in_score?'Fetched input used':source==='weather'&&context.state==='bundled'?'Bundled scenario used; demonstration only':'Excluded / unknown'}</dd></dl>${failed?`<p class="evidence-failure">Latest attempt failed${attempt.http_status?' · HTTP '+attempt.http_status:''}. ${esc(attempt.error)} ${good?'Earlier valid retrieval remains in use.':''}</p>`:''}<div class="evidence-actions"><button class="outline-button" data-fetch="${source}" type="button">Fetch ${source}</button>${proof?`<a href="/api/felix/evidence/${proof.id}" class="text-button" data-receipt="${proof.id}">View request &amp; response</a>`:''}</div>${proof?.sha256?`<small class="digest">Response SHA-256: ${esc(proof.sha256)}</small>`:''}</article>`;
   }).join('');
   $('weather-basis').textContent=`WEATHER USED / ${farm.weather.mode==='live_fetch'?'FETCHED FORECAST':farm.weather.mode==='unavailable'?'STALE / EXCLUDED':'BUNDLED SCENARIO'}`;
   $('weather-explanation').textContent=farm.weather.mode==='live_fetch'?'Forecast downloaded by this app. Model issue time is not supplied; generationtime_ms is server processing duration, not a timestamp. Weather is excluded after six hours or when its first day is no longer today.':'The bundled window is a demonstration, not current evidence. A stale fetched forecast is excluded rather than silently replaced with the bundle.';
@@ -34,6 +34,16 @@ function renderEvidence(farm) {
     $('survey-impact').innerHTML=`<span class="eyebrow">SURVEY #${answered.id}</span><h2>What the farmer’s answer changed</h2><div class="impact-values"><div><strong>${before.score}</strong><span>before this reply · rank ${before.rank}</span></div><b>→</b><div><strong>${after.score}</strong><span>after this reply · rank ${after.rank}</span></div><div><strong>${signed(delta)}</strong><span>change in triage points</span></div></div><p><strong>Officer action:</strong> ${esc(after.action)} · ${esc(after.status)}.</p><p class="hint">Recorded ${esc(stamp(answered.responded_at))}. Participation choice: ${esc(answered.notice_version)} at ${esc(stamp(answered.consented_at))}. It records the score before and after the answer; it does not test whether the score was right. Felix still reviews the report.</p>`;
   } else $('survey-impact').innerHTML='<span class="eyebrow">WHAT WE CAN DO WITH THE DATA</span><h2>No farmer answer yet for this farm</h2><p>Run a simulated check-in above. This panel then shows the score and queue position before and after the answer, plus the resulting officer action.</p>';
   $('privacy-export').href=`/api/felix/farms/${encodeURIComponent(selected)}/privacy-export`;
+  $('privacy-export').onclick=async event=>{
+    // A plain link cannot carry the officer token, so fetch the record and save it as a file.
+    event.preventDefault();
+    const response=await Fieldwise.fetch(event.currentTarget.href);
+    if(!response.ok){feedback('The farm record could not be exported: officer sign-in or a connection is needed.',true);return;}
+    const url=URL.createObjectURL(await response.blob());
+    const link=Object.assign(document.createElement('a'),{href:url,download:`fieldwise-${selected}-record.json`});
+    document.body.append(link);link.click();link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  };
 }
 
 async function reloadEvidence() {
@@ -76,4 +86,29 @@ document.addEventListener('DOMContentLoaded',()=>{
       await reloadEvidence();feedback('Selected farm’s local reports deleted. Public environmental evidence retained.');
     } catch(error){feedback(error.message,true);}
   });
+});
+
+// Evidence receipts are farmer-linked records, so a plain link (which cannot carry the officer token) would
+// be refused. Open them in a dialog through the signed-in helper instead.
+document.addEventListener('click', async event => {
+  const link = event.target.closest('[data-receipt]');
+  if (!link) return;
+  event.preventDefault();
+  let dialog = document.getElementById('receipt-dialog');
+  if (!dialog) {
+    dialog = document.createElement('dialog');
+    dialog.id = 'receipt-dialog';
+    dialog.className = 'receipt-dialog';
+    dialog.setAttribute('aria-labelledby', 'receipt-title');
+    dialog.innerHTML = '<h2 id="receipt-title"></h2><p class="hint">The saved request and provider response, exactly as this app stored them.</p>'
+      + '<pre tabindex="0" aria-label="Receipt contents"></pre><div class="signin-actions"><button type="button" class="primary-button" data-close>Close</button></div>';
+    dialog.querySelector('[data-close]').addEventListener('click', () => dialog.close());
+    document.body.append(dialog);
+  }
+  const response = await Fieldwise.fetch(link.getAttribute('href'));
+  if (!response.ok) { feedback('This receipt could not be opened: officer sign-in or a connection is needed.', true); return; }
+  dialog.querySelector('h2').textContent = `Evidence receipt #${link.dataset.receipt}`;
+  dialog.querySelector('pre').textContent = JSON.stringify(await response.json(), null, 2);
+  dialog.showModal();
+  dialog.querySelector('[data-close]').focus();
 });

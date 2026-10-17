@@ -65,7 +65,7 @@ main.phone-page{display:grid;margin-left:auto;margin-right:auto;max-width:980px;
 @media(max-width:820px){main.phone-page{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:400px){main.phone-page{padding-left:16px;padding-right:16px}.handset{padding:18px 18px 20px}}
 </style></head>
-<body>
+<body data-banner="off">
 <a class="skip-link" href="#main-content">Skip to main content</a>
 <main class="phone-page"><span id="main-content" tabindex="-1"></span>
 <section class="phone-stage" aria-label="Simulated basic phone">
@@ -89,13 +89,14 @@ main.phone-page{display:grid;margin-left:auto;margin-right:auto;max-width:980px;
 <section class="explain">
   <span class="eyebrow">USSD · AFRICA’S TALKING CALLBACK FORMAT</span>
   <h1>A farmer’s check-in on a basic phone</h1>
-  <p>This phone sends the same form fields Africa’s Talking sends to a USSD callback: <code>sessionId</code>, <code>serviceCode</code>, <code>phoneNumber</code> and <code>text</code>. Fieldwise answers with <code>CON</code> to keep the menu open or <code>END</code> to close it. To go live, register <code>/ussd</code> as the callback URL for a USSD code in an Africa’s Talking account.</p>
+  <p>This phone sends the same form fields Africa’s Talking sends to a USSD callback: <code>sessionId</code>, <code>serviceCode</code>, <code>phoneNumber</code> and <code>text</code>. Fieldwise answers with <code>CON</code> to keep the menu open or <code>END</code> to close it. This simulator posts to an officer-only route. To go live, set <code>FIELDWISE_USSD_KEY</code> and register <code>/ussd?key=…</code> as the callback URL for a USSD code in an Africa’s Talking account.</p>
   <ul><li>Farm numbers: 14, 27, 43, 56, 62, 75, 84 and 91.</li><li>The farmer agrees before any question. Saying no saves nothing.</li><li>The phone number is sent, as Africa’s Talking does, but Fieldwise never stores it.</li></ul>
   <p><a class="outline-button" href="/felix">Open Felix’s workspace to see the answer arrive</a></p>
   <h2 class="impact-group">Requests sent</h2>
   <div id="log" class="log" aria-live="off">No requests yet.</div>
 </section>
 </main>
+<script src="/static/offline.js"></script>
 <script>
 'use strict';
 const $ = id => document.getElementById(id);
@@ -106,7 +107,11 @@ async function send() {
   const body = new URLSearchParams({sessionId: session, serviceCode, phoneNumber: '+265999000000', networkCode: '65001', text: steps.join('*')});
   log('POST /ussd  text="' + steps.join('*') + '"');
   try {
-    const reply = await (await fetch('/ussd', {method: 'POST', body})).text();
+    // Through the shared helper: it finishes any pending sign-out first, sends this device's officer token,
+    // and asks for the PIN if there is no session.
+    const response = await Fieldwise.fetch('/api/ussd/simulate', {method: 'POST', body});
+    if (response.status === 401) { show('Officer sign-in is needed to use the simulator. Dial again after signing in.', true); session = null; return; }
+    const reply = await response.text();
     log('  ← ' + reply.split('\n')[0]);
     const ended = reply.startsWith('END');
     show(reply.slice(4), ended);

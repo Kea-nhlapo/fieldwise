@@ -42,6 +42,21 @@ const PIN = process.argv[3] || '2468';
     await page.locator('#feedback').filter({hasText:'Visit recorded'}).waitFor();
     report.visitSaved = true;
 
+    // Evidence receipts open for a signed-in officer (they need the officer token, so no plain links).
+    await page.locator('#fetch-evidence').click();
+    await page.waitForFunction(() => !document.querySelector('#fetch-evidence').disabled, null, {timeout: 90000});
+    await page.locator('[data-receipt]').first().click();
+    const receipt = page.locator('#receipt-dialog');
+    await receipt.waitFor({state: 'visible'});
+    report.receiptTitle = await receipt.locator('h2').innerText();
+    const receiptText = await receipt.locator('pre').innerText();
+    assert.doesNotMatch(receiptText, /Officer PIN required/);
+    assert.match(receiptText, /"id":/);
+    report.receiptAxe = await page.evaluate(async()=>(await axe.run('#receipt-dialog', {runOnly:{type:'tag', values:['wcag2a','wcag2aa','wcag21a','wcag21aa']}})).violations.map(v=>v.id));
+    assert.deepEqual(report.receiptAxe, []);
+    await receipt.locator('[data-close]').click();
+    await receipt.waitFor({state: 'hidden'});
+
     // Signed out with an action waiting in the outbox: it stays queued until the officer signs in.
     await context.setOffline(true);
     await page.locator('[data-farm="F027"]').click();
@@ -53,7 +68,7 @@ const PIN = process.argv[3] || '2468';
     await page.evaluate(()=>window.dispatchEvent(new Event('online')));
     await page.locator('.connection').filter({hasText:'Sign in with the officer PIN'}).waitFor();
     assert.equal(await page.evaluate(()=>Fieldwise.pending()), 1, 'refused action stays in the outbox');
-    await page.locator('.connection button').click();
+    await page.locator('.connection button:not([data-sign-out])').click();
     await page.fill('#fw-pin', PIN);
     await page.click('#fw-signin button[type=submit]');
     await page.waitForFunction(()=>Fieldwise.pending()===0, null, {timeout:15000});

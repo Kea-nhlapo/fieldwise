@@ -1,8 +1,17 @@
 """Officer PIN for anything that changes records or shows farmer reports.
 
 Set FIELDWISE_OFFICER_PIN to turn it on. Without it the app runs open, for tests and local
-development, and logs a warning. Signing in sets an HttpOnly session cookie for 12 hours.
-The USSD callback stays open: Africa's Talking has to reach it without a session.
+development, and logs a warning.
+
+A signed-in request needs two things:
+  * the HttpOnly session cookie set at sign-in, and
+  * the matching X-Officer-Token header, which pages keep on the device and send with every
+    request (static/offline.js).
+Signing out deletes the device's token straight away, even offline, so a leftover cookie is useless
+from every entry point (another page, /docs, a typed URL) until the server session also ends. The
+header also means a request forged by another site cannot act as the officer.
+
+The USSD provider callback is not an officer route; it is guarded separately in fieldwise/ussd.py.
 """
 import hmac
 import logging
@@ -15,10 +24,11 @@ from fastapi.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
 COOKIE = 'fieldwise_session'
+HEADER = 'X-Officer-Token'
 SESSION_SECONDS = 12 * 3600
 MAX_FAILURES, LOCKOUT_SECONDS = 5, 300
 
-# Reads that hold no farmer reports or answers.
+# Reads that hold no farmer reports or answers. Mirrored in static/sw.js and static/offline.js.
 OPEN_READS = ('/api/health', '/api/session', '/api/impact', '/api/simulation', '/api/disease/reference', '/api/felix/map')
 
 
@@ -33,27 +43,38 @@ def needs_officer(method, path):
 
 
 def register_auth(app, pin):
-    sessions = {}        # token -> expiry
+    sessions = {}        # cookie value -> {'expiry': ..., 'officer_token': ...}
     failures = {}        # client -> recent failure times
     app.state.auth_enabled = bool(pin)
     if not pin:
         logger.warning('FIELDWISE_OFFICER_PIN is not set: records and exports are open to anyone who can reach the server.')
 
+    def session_for(request):
+        cookie = request.cookies.get(COOKIE)
+        session = sessions.get(cookie) if cookie else None
+        if session and session['expiry'] < time.time():
+            sessions.pop(cookie, None)
+            return None
+        return session
+
     def signed_in(request):
-        token = request.cookies.get(COOKIE)
-        expiry = sessions.get(token) if token else None
-        if expiry and expiry < time.time():
-            sessions.pop(token, None)
-            return False
-        return bool(expiry)
+        session = session_for(request)
+        header = request.headers.get(HEADER, '')
+        return bool(session) and hmac.compare_digest(header.encode(), session['officer_token'].encode())
 
     # Registered after the offline replay middleware, so it wraps it: a request without a session is
     # turned away before the replay guard can remember the refusal under its idempotency key.
     @app.middleware('http')
     async def require_officer(request: Request, call_next):
-        if pin and needs_officer(request.method, request.url.path) and not signed_in(request):
+        record = needs_officer(request.method, request.url.path)
+        if pin and record and not signed_in(request):
             return JSONResponse({'detail': 'Officer PIN required.', 'auth': 'required'}, status_code=401)
-        return await call_next(request)
+        response = await call_next(request)
+        if record:
+            # Farmer records stay out of the browser's HTTP cache; the offline copy is managed (and
+            # deleted on sign-out) by the service worker.
+            response.headers['Cache-Control'] = 'no-store'
+        return response
 
     @app.get('/api/session')
     def session(request: Request):
@@ -76,14 +97,15 @@ def register_auth(app, pin):
             failures[client] = recent + [now]
             return JSONResponse({'detail': 'That PIN is not right.'}, status_code=401)
         failures.pop(client, None)
-        token = secrets.token_urlsafe(32)
-        sessions[token] = now + SESSION_SECONDS
-        response = JSONResponse({'auth_enabled': True, 'signed_in': True})
-        response.set_cookie(COOKIE, token, max_age=SESSION_SECONDS, httponly=True, samesite='strict')
+        cookie, officer_token = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
+        sessions[cookie] = {'expiry': now + SESSION_SECONDS, 'officer_token': officer_token}
+        response = JSONResponse({'auth_enabled': True, 'signed_in': True, 'officer_token': officer_token})
+        response.set_cookie(COOKIE, cookie, max_age=SESSION_SECONDS, httponly=True, samesite='strict')
         return response
 
     @app.delete('/api/session')
     def sign_out(request: Request):
+        # Needs only the cookie: signing out must always be possible.
         sessions.pop(request.cookies.get(COOKIE, ''), None)
         response = JSONResponse({'signed_in': False})
         response.delete_cookie(COOKIE)

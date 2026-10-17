@@ -12,14 +12,17 @@ PIN = '4821'
 class OfficerPinTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        self.client = TestClient(create_app(Path(self.tmp.name) / 'test.db', officer_pin_value=PIN))
+        self.client = TestClient(create_app(Path(self.tmp.name) / 'test.db', officer_pin_value=PIN, ussd_key_value='gw'))
 
     def tearDown(self):
         self.client.close()
         self.tmp.cleanup()
 
     def sign_in(self, pin=PIN):
-        return self.client.post('/api/session', json={'pin': pin})
+        r = self.client.post('/api/session', json={'pin': pin})
+        if r.status_code == 200:
+            self.client.headers['X-Officer-Token'] = r.json()['officer_token']
+        return r
 
     def test_writes_and_farmer_records_need_a_session(self):
         for method, path, body in [('post', '/api/felix/farms/F014/visit', {'notes': 'x'}), ('post', '/api/farms/makhaya/reply', {'reply': '2'}),
@@ -36,7 +39,7 @@ class OfficerPinTests(unittest.TestCase):
 
     def test_ussd_callback_stays_open(self):
         body = urlencode({'sessionId': 's', 'serviceCode': '*384#', 'phoneNumber': '+254700000000', 'text': ''})
-        r = self.client.post('/ussd', content=body, headers={'Content-Type': 'application/x-www-form-urlencoded'})
+        r = self.client.post('/ussd?key=gw', content=body, headers={'Content-Type': 'application/x-www-form-urlencoded'})
         self.assertEqual(r.status_code, 200)
         self.assertTrue(r.text.startswith('CON'))
 
@@ -49,6 +52,15 @@ class OfficerPinTests(unittest.TestCase):
         self.assertEqual(self.client.post('/api/felix/farms/F014/visit', json={'notes': 'Checked'}).status_code, 200)
         self.client.delete('/api/session')
         self.assertEqual(self.client.post('/api/felix/farms/F014/visit', json={'notes': 'Again'}).status_code, 401)
+
+    def test_cookie_without_the_device_token_is_refused(self):
+        # A device that signed out offline still holds the cookie, but has deleted its token.
+        self.sign_in()
+        del self.client.headers['X-Officer-Token']
+        self.assertEqual(self.client.get('/api/felix/dashboard').status_code, 401)
+        self.assertFalse(self.client.get('/api/session').json()['signed_in'])
+        self.client.headers['X-Officer-Token'] = 'guessed'
+        self.assertEqual(self.client.post('/api/felix/farms/F014/visit', json={'notes': 'x'}).status_code, 401)
 
     def test_repeated_wrong_pins_lock_sign_in(self):
         for _ in range(5):
@@ -71,6 +83,25 @@ class NoPinTests(unittest.TestCase):
             self.assertEqual(client.get('/api/session').json(), {'auth_enabled': False, 'signed_in': False})
             self.assertEqual(client.post('/api/farms/makhaya/reply', json={'reply': '1'}).status_code, 200)
             client.close()
+
+
+
+class RecordCachingTests(unittest.TestCase):
+    def test_farmer_records_are_not_stored_by_the_browser_cache(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            client = TestClient(create_app(Path(tmp) / 'test.db', officer_pin_value=PIN))
+            client.headers['X-Officer-Token'] = client.post('/api/session', json={'pin': PIN}).json()['officer_token']
+            self.assertEqual(client.get('/api/felix/dashboard').headers.get('cache-control'), 'no-store')
+            self.assertNotEqual(client.get('/api/impact').headers.get('cache-control'), 'no-store')
+            client.close()
+
+    def test_service_worker_and_server_agree_on_which_reads_are_open(self):
+        import re
+        from fieldwise.auth import OPEN_READS
+        root = Path(__file__).resolve().parents[1] / 'static'
+        for name in ('sw.js', 'offline.js'):
+            listed = re.search(r"const OPEN_READS = \[([^\]]+)\]", (root / name).read_text(encoding='utf-8')).group(1)
+            self.assertEqual(tuple(re.findall(r"'([^']+)'", listed)), OPEN_READS, name)
 
 
 if __name__ == '__main__':

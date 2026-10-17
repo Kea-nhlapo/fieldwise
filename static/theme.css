@@ -261,3 +261,9 @@ nav a .ico{width:20px;height:20px;align-self:center}
 .signin-dialog input{width:100%;font-size:22px;letter-spacing:.3em;padding:12px 14px}
 .signin-error{color:#9b2f12;min-height:1.2em;margin:8px 0 0!important}
 .signin-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:14px}
+
+/* Evidence receipt dialog */
+.receipt-dialog{border:0;border-radius:18px;padding:24px 26px;width:min(760px,calc(100vw - 32px));max-height:min(80vh,720px);box-shadow:0 30px 70px -20px rgba(18,51,41,.6);background:var(--card);color:var(--ink)}
+.receipt-dialog::backdrop{background:rgba(14,40,31,.55)}
+.receipt-dialog h2{margin:0 0 6px;font-size:22px}
+.receipt-dialog pre{background:#f1f4e6;border-radius:10px;padding:14px;max-height:52vh;overflow:auto;font-size:12.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
