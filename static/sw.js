@@ -3,7 +3,7 @@
 // App shell: cache-first, refreshed in the background. GET /api/*: network-first,
 // falling back to the last saved response, stamped with when it was saved.
 // Writes are never cached here; static/offline.js queues them in an outbox.
-const VERSION = 'fieldwise-v15';
+const VERSION = 'fieldwise-v17';
 const SHELL = [
   '/', '/felix', '/impact', '/pilot', '/simulation',
   '/static/style.css', '/static/disease.css', '/static/felix.css', '/static/evidence.css', '/static/a11y.css', '/static/theme.css', '/static/sidebar.css', '/static/icons.css', '/static/impact.css',
@@ -67,11 +67,21 @@ async function networkFirst(request) {
   const started = generation;
   try {
     const response = await fetch(request);
-    if (record && started !== generation) return signedOut();
-    if (response.ok) await stamp(cache, request, response.clone(), record ? started : null);
+    if (!record) {
+      if (response.ok) await stamp(cache, request, response.clone());
+      return response;
+    }
+    if (started !== generation) return signedOut();
     // The server says there is no session: nobody on this device may read the saved records any more.
-    else if (response.status === 401 && isRecord(new URL(request.url).pathname)) await forgetRecords();
-    return response;
+    if (response.status === 401) { await forgetRecords(); return response; }
+    // Read the whole record before deciding. A sign-out at any point while the headers or the body
+    // were on their way wins: the page gets "signed out", never the record. Records are small.
+    const body = await response.arrayBuffer();
+    if (started !== generation) return signedOut();
+    const copy = () => new Response(body.slice(0), {status: response.status, statusText: response.statusText, headers: response.headers});
+    if (response.ok) await stamp(cache, request, copy(), started);
+    if (started !== generation) return signedOut();
+    return copy();
   } catch (error) {
     const cached = await cache.match(request);
     // Offline: records saved under a session only go to a page that still holds this device's officer token.

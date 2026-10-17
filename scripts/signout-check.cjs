@@ -143,6 +143,30 @@ async function signedInWithCache(context) {
       await context.close();
     }
 
+    // G. Second review: sign-out while a record's body is still downloading (headers already arrived).
+    //    Needs scripts/serve-test.py, which holds the body for requests carrying X-Test-Slow-Body.
+    {
+      const context = await fresh();
+      const page = await signedInWithCache(context);
+      const started = Date.now();
+      const slow = page.evaluate(async () => {
+        const token = localStorage.getItem('fieldwise-officer-token');
+        const r = await fetch('/api/felix/dashboard', {headers: {'X-Officer-Token': token, 'X-Test-Slow-Body': '3'}});
+        const body = await r.json().catch(() => ({}));
+        return {status: r.status, farms: (body.farms || []).length};
+      });
+      await page.waitForTimeout(1000);                      // headers are in, body still held
+      await page.evaluate(() => fetch('/api/session', {method: 'DELETE'}));
+      report.G_slowBodyAfterSignOut = await slow;
+      report.G_bodyReallyDelayed = Date.now() - started >= 2500;
+      assert.ok(report.G_bodyReallyDelayed, 'the body was still downloading during sign-out');
+      assert.equal(report.G_slowBodyAfterSignOut.farms, 0, 'a body that finishes after sign-out must not reach the page');
+      assert.equal(report.G_slowBodyAfterSignOut.status, 401);
+      report.G_cacheAfter = await cachedRecordEntries(page);
+      assert.equal(report.G_cacheAfter, 0);
+      await context.close();
+    }
+
     // F. Review finding 4: signing out in one tab clears every other tab.
     {
       const context = await fresh();
