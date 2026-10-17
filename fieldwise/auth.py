@@ -51,9 +51,15 @@ def register_auth(app, pin):
     # turned away before the replay guard can remember the refusal under its idempotency key.
     @app.middleware('http')
     async def require_officer(request: Request, call_next):
-        if pin and needs_officer(request.method, request.url.path) and not signed_in(request):
+        record = needs_officer(request.method, request.url.path)
+        if pin and record and not signed_in(request):
             return JSONResponse({'detail': 'Officer PIN required.', 'auth': 'required'}, status_code=401)
-        return await call_next(request)
+        response = await call_next(request)
+        if record:
+            # Farmer records stay out of the browser's HTTP cache; the offline copy is managed (and
+            # deleted on sign-out) by the service worker.
+            response.headers['Cache-Control'] = 'no-store'
+        return response
 
     @app.get('/api/session')
     def session(request: Request):

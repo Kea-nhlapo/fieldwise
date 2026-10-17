@@ -7,7 +7,9 @@ starts with 'CON ' (show a menu and wait) or 'END ' (close the session).
 The phone number is never stored or logged: the farmer identifies the farm by number,
 and the answers go through the same consent-checked check-in as the web flow.
 """
+import hmac
 import logging
+import os
 from urllib.parse import parse_qs
 
 from fastapi import HTTPException, Request
@@ -33,18 +35,43 @@ def menu(question, options):
     return 'CON ' + question + '\n' + '\n'.join(f'{i}. {label}' for i, label in enumerate(options, 1))
 
 
-def register_ussd(app, lookup_farm, submit_check_in):
-    """lookup_farm(fid) -> (farm, question, survey_id) or None; submit_check_in(fid, answers, survey_id) -> None."""
+def register_ussd(app, lookup_farm, submit_check_in, key=None, service_code=None):
+    """lookup_farm(fid) -> (farm, question, survey_id) or None; submit_check_in(fid, answers, survey_id) -> None.
 
-    @app.post('/ussd', response_class=PlainTextResponse, tags=['USSD (Africa’s Talking format)'])
-    async def ussd(request: Request):
+    key: the provider callback is registered as /ussd?key=<key>. Without a key the callback is switched off,
+    so nobody can submit answers to an unconfigured server. service_code, if set, must match the request.
+    """
+    key = key if key is not None else os.environ.get('FIELDWISE_USSD_KEY', '')
+    service_code = service_code if service_code is not None else os.environ.get('FIELDWISE_USSD_CODE', '')
+    if not key:
+        logger.warning('FIELDWISE_USSD_KEY is not set: the /ussd provider callback is switched off.')
+
+    async def form(request):
+        return {k: v[0] for k, v in parse_qs((await request.body()).decode('utf-8', 'replace')).items()}
+
+    def safely(text):
         # A USSD gateway shows whatever we return, so never answer with an HTTP error.
         try:
-            fields = {k: v[0] for k, v in parse_qs((await request.body()).decode('utf-8', 'replace')).items()}
-            return respond(fields.get('text', ''))
+            return respond(text)
         except Exception:
             logger.exception('USSD request failed')
             return 'END Sorry, something went wrong. Please dial again.'
+
+    @app.post('/ussd', response_class=PlainTextResponse, tags=['USSD (Africa’s Talking format)'])
+    async def ussd(request: Request):
+        if not key:
+            return PlainTextResponse('USSD callback is switched off. Set FIELDWISE_USSD_KEY.', status_code=404)
+        if not hmac.compare_digest(request.query_params.get('key', '').encode(), key.encode()):
+            return PlainTextResponse('Not a registered USSD gateway.', status_code=403)
+        fields = await form(request)
+        if service_code and fields.get('serviceCode', '') != service_code:
+            return 'END This service code is not registered for Fieldwise.'
+        return safely(fields.get('text', ''))
+
+    @app.post('/api/ussd/simulate', response_class=PlainTextResponse, tags=['USSD (Africa’s Talking format)'])
+    async def ussd_simulator(request: Request):
+        # Same menus for the in-app phone simulator. Under /api/, so it needs an officer session when a PIN is set.
+        return safely((await form(request)).get('text', ''))
 
     def respond(text):
         if len(text) > MAX_TEXT:

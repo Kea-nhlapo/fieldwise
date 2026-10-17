@@ -53,7 +53,7 @@ const PIN = process.argv[3] || '2468';
     await page.evaluate(()=>window.dispatchEvent(new Event('online')));
     await page.locator('.connection').filter({hasText:'Sign in with the officer PIN'}).waitFor();
     assert.equal(await page.evaluate(()=>Fieldwise.pending()), 1, 'refused action stays in the outbox');
-    await page.locator('.connection button').click();
+    await page.locator('.connection button:not([data-sign-out])').click();
     await page.fill('#fw-pin', PIN);
     await page.click('#fw-signin button[type=submit]');
     await page.waitForFunction(()=>Fieldwise.pending()===0, null, {timeout:15000});

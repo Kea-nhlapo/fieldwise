@@ -378,5 +378,5 @@ def register_felix(app, store, root):
                        (fid, 'ussd', 'Answers arrived over USSD after the farmer agreed on the phone. No phone number stored.',
                         datetime.now(timezone.utc).isoformat()))
 
-    register_ussd(app, ussd_lookup, ussd_submit)
+    register_ussd(app, ussd_lookup, ussd_submit, getattr(app.state, 'ussd_key', None))
     app.include_router(router)

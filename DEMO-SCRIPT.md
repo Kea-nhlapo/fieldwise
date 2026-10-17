@@ -20,11 +20,18 @@ Numbers below come from an automated run of this exact flow (`node scripts/recor
 
 ## The script
 
+**Name the three settings once, early.** Each place shows a different part, and none is one system validated on real farms:
+- **Kasungu** shows the officer workflow.
+- **South Africa** shows the water model.
+- **Bomet** is the simulation.
+
+The opening line below does this.
+
 Which farm sits at **Now #4** depends on the live weather you fetch, so it can change between rehearsal and stage. The script works with whichever farm is there; the reveal is always 62 → 117 points and rank 4 → 1.
 
 | Time | Say | Do |
 |---|---|---|
-| **0:00–0:40** | "Felix is a co-op field officer with about 100 farms and time for four visits a day. When a pest or disease starts on one of them, the question is how fast he gets there. Government officers carry far more: in Malawi, one extension worker for every 2,017 farmers, by the Ministry of Agriculture's own figure. Fieldwise tells Felix which farm to visit first, and why." | Felix tab, top of the page. Point at the **Visit first** card. |
+| **0:00–0:40** | "Felix is a co-op field officer with about 100 farms and time for four visits a day. When a pest or disease starts on one of them, the question is how fast he gets there. Government officers carry far more: in Malawi, one extension worker for every 2,017 farmers, by the Ministry of Agriculture's own figure. Fieldwise tells Felix which farm to visit first, and why. You'll see three places today: Kasungu for the officer's workflow, South African farms for the water model, and Bomet in Kenya for a simulation. All the farms are fictional." | Felix tab, top of the page. Point at the **Visit first** card. |
 | **0:40–1:20** | "Every score starts from public data. Each number shows where it came from and when we downloaded it: Open-Meteo weather, ISRIC soil, OpenStreetMap. Those providers only receive coordinates: never a farmer's name or answers. Farmers' answers travel over USSD to our server, and we never store their phone numbers." | Scroll to Step 1. Point at a **Fetched · current** badge and its retrieval time. |
 | **1:20–2:00** | "Public data can't see a wilting field. So we ask farmers, but only the ones whose answer would change Felix's day. For each farm, Fieldwise scores both possible answers. This farm is fourth. If the farmer says yes, it jumps into today's top three." | Scroll to **Step 3 · Choose who to ask**. Find the row marked **Now #4** and note its dial code (for example `*384*56#`). Click **Queue survey** on that row. |
 | **2:00–3:00** | "The farmer has a basic phone. They don't need an app or a data bundle; they dial a USSD code." Dial, then read the consent screen aloud: "They agree first; saying no saves nothing, and we never store the phone number." | USSD tab. Type the dial code from that row and press **Call**. Answer `1` (agree), `1` (yes, wilting), `2` (several areas), `2` (more than one day). |
@@ -64,7 +71,9 @@ Not reliably overall: +3.4 points on average, ahead in 125 of 200 seasons, tied 
 MLN spreads between neighbouring farms, so a neighbour's case says something about yours. Fall armyworm moths travel tens of kilometres a night, so a neighbour's report says little. Tshego chose Bomet for the farm layout. If it's confirmed, mention that MLN was first reported in Kenya there in 2011; check the source before saying it.
 
 **"Does the USSD actually work?"**
-The `/ussd` endpoint uses Africa's Talking's callback format: same fields, and `CON`/`END` replies. Going live means registering the endpoint against a USSD code in an Africa's Talking account. The simulator posts exactly what Africa's Talking would.
+The menus speak Africa's Talking's callback format: same fields, and `CON`/`END` replies. The real callback, `/ussd`, is switched off until a secret key is set; the gateway is then registered as `/ussd?key=…`, so a random caller can't submit answers. The phone simulator uses an officer-only route with the same menus.
+
+One step is still open: proving which farm a caller answers for. Our proposal is a short farm code on each farmer's card, so we never need to store phone numbers. It's in the pilot plan.
 
 **"What about data protection?"**
 In Malawi, the Data Protection Act 2024 applies, with MACRA as the regulator. In South Africa, it's POPIA. Fieldwise asks for consent before any question, stores farm numbers instead of phone numbers, lets a farm's reports be exported or deleted, and keeps impact counts free of personal data. We haven't had a compliance assessment yet; that's in pilot week 1.

@@ -3,7 +3,7 @@
 // App shell: cache-first, refreshed in the background. GET /api/*: network-first,
 // falling back to the last saved response, stamped with when it was saved.
 // Writes are never cached here; static/offline.js queues them in an outbox.
-const VERSION = 'fieldwise-v12';
+const VERSION = 'fieldwise-v13';
 const SHELL = [
   '/', '/felix', '/impact', '/pilot', '/simulation',
   '/static/style.css', '/static/disease.css', '/static/felix.css', '/static/evidence.css', '/static/a11y.css', '/static/theme.css', '/static/sidebar.css', '/static/icons.css', '/static/impact.css',
@@ -13,6 +13,18 @@ const SHELL = [
   '/static/icons/arrow-left.svg', '/static/icons/arrow-right.svg', '/static/icons/arrow-up-right.svg', '/static/icons/bell.svg', '/static/icons/bug.svg', '/static/icons/chart-column.svg', '/static/icons/circle-dashed.svg', '/static/icons/clipboard-check.svg', '/static/icons/coins.svg', '/static/icons/droplets.svg', '/static/icons/flag.svg', '/static/icons/info.svg', '/static/icons/layout-dashboard.svg', '/static/icons/list.svg', '/static/icons/map-pin.svg', '/static/icons/map.svg', '/static/icons/route.svg', '/static/icons/smartphone.svg', '/static/icons/sprout.svg', '/static/icons/trending-up.svg', '/static/icons/triangle-alert.svg', '/static/icons/waves.svg', '/static/icons/wheat.svg',
   '/static/tshego/farms.json', '/static/tshego/kasungu_map.json', '/static/tshego/kasungu_detail.json', '/static/tshego/kasungu_weather.json',
 ];
+// Reads that hold no farmer records (mirrors OPEN_READS in fieldwise/auth.py). Everything else under /api/
+// is a farmer record: it is cached only while signed in and deleted when the session ends.
+const OPEN_READS = ['/api/health', '/api/session', '/api/impact', '/api/simulation', '/api/disease/reference', '/api/felix/map'];
+const isRecord = path => path.startsWith('/api/') && !OPEN_READS.some(open => path.startsWith(open));
+
+async function forgetRecords() {
+  for (const name of await caches.keys()) {
+    const cache = await caches.open(name);
+    for (const request of await cache.keys()) if (isRecord(new URL(request.url).pathname)) await cache.delete(request);
+  }
+}
+
 const API_WARM = ['/api/dashboard', '/api/felix/dashboard', '/api/felix/map', '/api/impact', '/api/disease/reference/demo', '/api/simulation'];
 
 self.addEventListener('install', event => {
@@ -43,6 +55,8 @@ async function networkFirst(request) {
   try {
     const response = await fetch(request);
     if (response.ok) await stamp(cache, request, response.clone());
+    // The server says there is no session: nobody on this device may read the saved records any more.
+    else if (response.status === 401 && isRecord(new URL(request.url).pathname)) await forgetRecords();
     return response;
   } catch (error) {
     const cached = await cache.match(request);
@@ -64,8 +78,14 @@ async function cacheFirst(request) {
   catch (error) { return (await cache.match('/')) || Response.error(); }
 }
 
+self.addEventListener('message', event => {
+  if (event.data === 'forget-records') event.waitUntil(forgetRecords());
+});
+
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
+  // Any sign-out, including a direct API call, clears saved records; the request itself goes to the network.
+  if (event.request.method === 'DELETE' && url.pathname === '/api/session') { event.waitUntil(forgetRecords()); return; }
   if (event.request.method !== 'GET' || url.origin !== self.location.origin) return;
   if (url.pathname.startsWith('/api/impact/export') || url.pathname.startsWith('/docs') || url.pathname === '/openapi.json') return;
   event.respondWith(url.pathname.startsWith('/api/') ? networkFirst(event.request) : cacheFirst(event.request));
