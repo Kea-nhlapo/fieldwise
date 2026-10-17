@@ -1,0 +1,1366 @@
+{
+ "assumptions": {
+  "farms": 100,
+  "farms_per_cluster": 10,
+  "days": 60,
+  "visits_per_day": 4,
+  "working_days_per_week": 5,
+  "centre": [
+   -0.78,
+   35.34
+  ],
+  "area_half_width_deg": 0.12,
+  "cluster_sd_deg": 0.01,
+  "faw_daily_risk": 0.002,
+  "faw_weather_gain": 2.0,
+  "mln_first_cases": 2,
+  "mln_background_risk": 0.0005,
+  "mln_risk_per_infected_neighbour": 0.005,
+  "neighbour_km": 2.0,
+  "report_chance": 0.4,
+  "report_delay_days": [
+   1,
+   5
+  ],
+  "false_reports_per_farm_day": 0.002,
+  "weather_noise": 0.2,
+  "reach_window_days": 7
+ },
+ "fieldwise_prior": {
+  "daily_risk": 0.003,
+  "weather_gain": 1.0,
+  "neighbour_gain": 5.0,
+  "report_weight": 0.5
+ },
+ "policies": {
+  "rotation": "Basic rotation: every farm in turn, village by village",
+  "officer": "Experienced officer: reported farms first, oldest report first, then whoever has waited longest",
+  "fieldwise": "Fieldwise: rank by farmer reports, weather risk and nearby MLN"
+ },
+ "simulated": true,
+ "generated_at": "2026-10-17T09:01:34.646512+00:00",
+ "commit": "a7cc58e",
+ "main": {
+  "runs": 200,
+  "signal": "real",
+  "by_kind_vs_officer": {
+   "faw": {
+    "mean": -0.4,
+    "p5": -16.7,
+    "p95": 16.7,
+    "ahead": 74,
+    "tied": 49,
+    "behind": 77,
+    "runs": 200
+   },
+   "mln": {
+    "mean": 10.0,
+    "p5": -20.0,
+    "p95": 42.9,
+    "ahead": 117,
+    "tied": 47,
+    "behind": 36,
+    "runs": 200
+   }
+  },
+  "problems_per_run": 30.8,
+  "policies": {
+   "rotation": {
+    "mean": 23.3,
+    "p5": 11.9,
+    "p95": 35.4,
+    "label": "Basic rotation: every farm in turn, village by village",
+    "faw_reach": 23.3,
+    "mln_reach": 22.8
+   },
+   "officer": {
+    "mean": 54.2,
+    "p5": 40.6,
+    "p95": 70.0,
+    "label": "Experienced officer: reported farms first, oldest report first, then whoever has waited longest",
+    "faw_reach": 53.9,
+    "mln_reach": 54.4
+   },
+   "fieldwise": {
+    "mean": 57.6,
+    "p5": 41.7,
+    "p95": 73.8,
+    "label": "Fieldwise: rank by farmer reports, weather risk and nearby MLN",
+    "faw_reach": 53.5,
+    "mln_reach": 64.5
+   }
+  },
+  "fieldwise_minus_rotation": {
+   "mean": 34.3,
+   "p5": 14.8,
+   "p95": 53.1,
+   "ahead": 198,
+   "tied": 1,
+   "behind": 1,
+   "runs": 200
+  },
+  "fieldwise_minus_officer": {
+   "mean": 3.4,
+   "p5": -10.0,
+   "p95": 17.2,
+   "ahead": 125,
+   "tied": 20,
+   "behind": 55,
+   "runs": 200
+  }
+ },
+ "no_signal": {
+  "runs": 200,
+  "signal": "scrambled",
+  "by_kind_vs_officer": {
+   "faw": {
+    "mean": 0.9,
+    "p5": -19.0,
+    "p95": 21.7,
+    "ahead": 91,
+    "tied": 27,
+    "behind": 82,
+    "runs": 200
+   },
+   "mln": {
+    "mean": 9.6,
+    "p5": -28.6,
+    "p95": 40.0,
+    "ahead": 126,
+    "tied": 29,
+    "behind": 45,
+    "runs": 200
+   }
+  },
+  "problems_per_run": 30.8,
+  "policies": {
+   "rotation": {
+    "mean": 23.3,
+    "p5": 11.9,
+    "p95": 35.4,
+    "label": "Basic rotation: every farm in turn, village by village",
+    "faw_reach": 23.3,
+    "mln_reach": 22.8
+   },
+   "officer": {
+    "mean": 23.8,
+    "p5": 11.8,
+    "p95": 36.7,
+    "label": "Experienced officer: reported farms first, oldest report first, then whoever has waited longest",
+    "faw_reach": 23.4,
+    "mln_reach": 23.7
+   },
+   "fieldwise": {
+    "mean": 28.0,
+    "p5": 14.7,
+    "p95": 44.4,
+    "label": "Fieldwise: rank by farmer reports, weather risk and nearby MLN",
+    "faw_reach": 24.3,
+    "mln_reach": 34.7
+   }
+  },
+  "fieldwise_minus_rotation": {
+   "mean": 4.6,
+   "p5": -13.6,
+   "p95": 23.8,
+   "ahead": 118,
+   "tied": 23,
+   "behind": 59,
+   "runs": 200
+  },
+  "fieldwise_minus_officer": {
+   "mean": 4.2,
+   "p5": -15.0,
+   "p95": 21.4,
+   "ahead": 120,
+   "tied": 17,
+   "behind": 63,
+   "runs": 200
+  }
+ },
+ "no_signal_strict": {
+  "runs": 200,
+  "signal": "scrambled, own finds ignored",
+  "by_kind_vs_officer": {
+   "faw": {
+    "mean": 0.8,
+    "p5": -19.0,
+    "p95": 21.1,
+    "ahead": 82,
+    "tied": 39,
+    "behind": 79,
+    "runs": 200
+   },
+   "mln": {
+    "mean": 0.5,
+    "p5": -33.3,
+    "p95": 31.2,
+    "ahead": 83,
+    "tied": 43,
+    "behind": 74,
+    "runs": 200
+   }
+  },
+  "problems_per_run": 30.8,
+  "policies": {
+   "rotation": {
+    "mean": 23.3,
+    "p5": 11.9,
+    "p95": 35.4,
+    "label": "Basic rotation: every farm in turn, village by village",
+    "faw_reach": 23.3,
+    "mln_reach": 22.8
+   },
+   "officer": {
+    "mean": 23.8,
+    "p5": 11.8,
+    "p95": 36.7,
+    "label": "Experienced officer: reported farms first, oldest report first, then whoever has waited longest",
+    "faw_reach": 23.4,
+    "mln_reach": 23.7
+   },
+   "fieldwise": {
+    "mean": 24.4,
+    "p5": 13.3,
+    "p95": 38.5,
+    "label": "Fieldwise: rank by farmer reports, weather risk and nearby MLN",
+    "faw_reach": 24.3,
+    "mln_reach": 24.5
+   }
+  },
+  "fieldwise_minus_rotation": {
+   "mean": 1.1,
+   "p5": -17.9,
+   "p95": 18.8,
+   "ahead": 98,
+   "tied": 25,
+   "behind": 77,
+   "runs": 200
+  },
+  "fieldwise_minus_officer": {
+   "mean": 0.7,
+   "p5": -15.4,
+   "p95": 16.7,
+   "ahead": 100,
+   "tied": 16,
+   "behind": 84,
+   "runs": 200
+  }
+ },
+ "ablation": {
+  "all signals": {
+   "reach": 57.6,
+   "vs_officer": {
+    "mean": 3.4,
+    "p5": -10.0,
+    "p95": 17.2,
+    "ahead": 125,
+    "tied": 20,
+    "behind": 55,
+    "runs": 200
+   },
+   "vs_rotation": {
+    "mean": 34.3,
+    "p5": 14.8,
+    "p95": 53.1,
+    "ahead": 198,
+    "tied": 1,
+    "behind": 1,
+    "runs": 200
+   },
+   "faw_reach": 53.5,
+   "mln_reach": 64.5
+  },
+  "without weather": {
+   "reach": 58.1,
+   "vs_officer": {
+    "mean": 3.9,
+    "p5": -8.8,
+    "p95": 16.7,
+    "ahead": 121,
+    "tied": 35,
+    "behind": 44,
+    "runs": 200
+   },
+   "vs_rotation": {
+    "mean": 34.8,
+    "p5": 16.0,
+    "p95": 54.8,
+    "ahead": 200,
+    "tied": 0,
+    "behind": 0,
+    "runs": 200
+   },
+   "faw_reach": 53.0,
+   "mln_reach": 66.1
+  },
+  "without nearby MLN": {
+   "reach": 53.3,
+   "vs_officer": {
+    "mean": -0.9,
+    "p5": -15.0,
+    "p95": 12.0,
+    "ahead": 74,
+    "tied": 41,
+    "behind": 85,
+    "runs": 200
+   },
+   "vs_rotation": {
+    "mean": 30.0,
+    "p5": 9.5,
+    "p95": 50.0,
+    "ahead": 195,
+    "tied": 3,
+    "behind": 2,
+    "runs": 200
+   },
+   "faw_reach": 53.5,
+   "mln_reach": 52.7
+  },
+  "without Felix’s own MLN finds": {
+   "reach": 56.2,
+   "vs_officer": {
+    "mean": 2.0,
+    "p5": -11.5,
+    "p95": 14.3,
+    "ahead": 106,
+    "tied": 30,
+    "behind": 64,
+    "runs": 200
+   },
+   "vs_rotation": {
+    "mean": 32.9,
+    "p5": 13.3,
+    "p95": 53.3,
+    "ahead": 196,
+    "tied": 2,
+    "behind": 2,
+    "runs": 200
+   },
+   "faw_reach": 53.7,
+   "mln_reach": 60.7
+  }
+ },
+ "sensitivity": {
+  "weights ×0.5": {
+   "reach": 57.9,
+   "vs_officer": {
+    "mean": 3.7,
+    "p5": -9.4,
+    "p95": 17.1,
+    "ahead": 119,
+    "tied": 27,
+    "behind": 54,
+    "runs": 200
+   },
+   "vs_rotation": {
+    "mean": 34.6,
+    "p5": 14.8,
+    "p95": 55.6,
+    "ahead": 198,
+    "tied": 0,
+    "behind": 2,
+    "runs": 200
+   },
+   "faw_reach": 54.5,
+   "mln_reach": 63.9
+  },
+  "weights ×1": {
+   "reach": 57.6,
+   "vs_officer": {
+    "mean": 3.4,
+    "p5": -10.0,
+    "p95": 17.2,
+    "ahead": 125,
+    "tied": 20,
+    "behind": 55,
+    "runs": 200
+   },
+   "vs_rotation": {
+    "mean": 34.3,
+    "p5": 14.8,
+    "p95": 53.1,
+    "ahead": 198,
+    "tied": 1,
+    "behind": 1,
+    "runs": 200
+   },
+   "faw_reach": 53.5,
+   "mln_reach": 64.5
+  },
+  "weights ×2": {
+   "reach": 56.4,
+   "vs_officer": {
+    "mean": 2.2,
+    "p5": -12.5,
+    "p95": 16.0,
+    "ahead": 101,
+    "tied": 28,
+    "behind": 71,
+    "runs": 200
+   },
+   "vs_rotation": {
+    "mean": 33.1,
+    "p5": 13.0,
+    "p95": 53.8,
+    "ahead": 198,
+    "tied": 1,
+    "behind": 1,
+    "runs": 200
+   },
+   "faw_reach": 51.7,
+   "mln_reach": 64.2
+  }
+ },
+ "scale": [
+  {
+   "farms": 100,
+   "runs": 200,
+   "policies": {
+    "rotation": 23.3,
+    "officer": 54.2,
+    "fieldwise": 57.6
+   },
+   "vs_officer": {
+    "mean": 3.4,
+    "p5": -10.0,
+    "p95": 17.2,
+    "ahead": 125,
+    "tied": 20,
+    "behind": 55,
+    "runs": 200
+   }
+  },
+  {
+   "farms": 250,
+   "runs": 100,
+   "policies": {
+    "rotation": 8.9,
+    "officer": 44.9,
+    "fieldwise": 41.4
+   },
+   "vs_officer": {
+    "mean": -3.5,
+    "p5": -12.9,
+    "p95": 4.4,
+    "ahead": 24,
+    "tied": 11,
+    "behind": 65,
+    "runs": 100
+   }
+  },
+  {
+   "farms": 1000,
+   "runs": 40,
+   "policies": {
+    "rotation": 2.4,
+    "officer": 10.7,
+    "fieldwise": 18.3
+   },
+   "vs_officer": {
+    "mean": 7.6,
+    "p5": -1.9,
+    "p95": 15.2,
+    "ahead": 37,
+    "tied": 0,
+    "behind": 3,
+    "runs": 40
+   }
+  }
+ ],
+ "example": {
+  "seed": 7,
+  "day": 50,
+  "farms": [
+   {
+    "id": 0,
+    "lat": -0.81923,
+    "lon": 35.25574,
+    "village": 0
+   },
+   {
+    "id": 1,
+    "lat": -0.81707,
+    "lon": 35.24978,
+    "village": 0
+   },
+   {
+    "id": 2,
+    "lat": -0.81919,
+    "lon": 35.26015,
+    "village": 0
+   },
+   {
+    "id": 3,
+    "lat": -0.82889,
+    "lon": 35.27338,
+    "village": 0
+   },
+   {
+    "id": 4,
+    "lat": -0.81671,
+    "lon": 35.26817,
+    "village": 0
+   },
+   {
+    "id": 5,
+    "lat": -0.82848,
+    "lon": 35.24881,
+    "village": 0
+   },
+   {
+    "id": 6,
+    "lat": -0.82572,
+    "lon": 35.25514,
+    "village": 0
+   },
+   {
+    "id": 7,
+    "lat": -0.81596,
+    "lon": 35.25869,
+    "village": 0
+   },
+   {
+    "id": 8,
+    "lat": -0.82675,
+    "lon": 35.24663,
+    "village": 0
+   },
+   {
+    "id": 9,
+    "lat": -0.82749,
+    "lon": 35.26841,
+    "village": 0
+   },
+   {
+    "id": 10,
+    "lat": -0.75186,
+    "lon": 35.23983,
+    "village": 1
+   },
+   {
+    "id": 11,
+    "lat": -0.73951,
+    "lon": 35.22249,
+    "village": 1
+   },
+   {
+    "id": 12,
+    "lat": -0.74329,
+    "lon": 35.25045,
+    "village": 1
+   },
+   {
+    "id": 13,
+    "lat": -0.76392,
+    "lon": 35.23417,
+    "village": 1
+   },
+   {
+    "id": 14,
+    "lat": -0.74484,
+    "lon": 35.22921,
+    "village": 1
+   },
+   {
+    "id": 15,
+    "lat": -0.7388,
+    "lon": 35.23676,
+    "village": 1
+   },
+   {
+    "id": 16,
+    "lat": -0.75842,
+    "lon": 35.24566,
+    "village": 1
+   },
+   {
+    "id": 17,
+    "lat": -0.73708,
+    "lon": 35.24684,
+    "village": 1
+   },
+   {
+    "id": 18,
+    "lat": -0.72937,
+    "lon": 35.24101,
+    "village": 1
+   },
+   {
+    "id": 19,
+    "lat": -0.74258,
+    "lon": 35.22439,
+    "village": 1
+   },
+   {
+    "id": 20,
+    "lat": -0.76523,
+    "lon": 35.30165,
+    "village": 2
+   },
+   {
+    "id": 21,
+    "lat": -0.77592,
+    "lon": 35.29512,
+    "village": 2
+   },
+   {
+    "id": 22,
+    "lat": -0.78106,
+    "lon": 35.30245,
+    "village": 2
+   },
+   {
+    "id": 23,
+    "lat": -0.7585,
+    "lon": 35.28745,
+    "village": 2
+   },
+   {
+    "id": 24,
+    "lat": -0.78597,
+    "lon": 35.31016,
+    "village": 2
+   },
+   {
+    "id": 25,
+    "lat": -0.75695,
+    "lon": 35.31355,
+    "village": 2
+   },
+   {
+    "id": 26,
+    "lat": -0.79039,
+    "lon": 35.28258,
+    "village": 2
+   },
+   {
+    "id": 27,
+    "lat": -0.76781,
+    "lon": 35.3004,
+    "village": 2
+   },
+   {
+    "id": 28,
+    "lat": -0.78259,
+    "lon": 35.31754,
+    "village": 2
+   },
+   {
+    "id": 29,
+    "lat": -0.76037,
+    "lon": 35.30934,
+    "village": 2
+   },
+   {
+    "id": 30,
+    "lat": -0.88362,
+    "lon": 35.34613,
+    "village": 3
+   },
+   {
+    "id": 31,
+    "lat": -0.87014,
+    "lon": 35.34797,
+    "village": 3
+   },
+   {
+    "id": 32,
+    "lat": -0.88089,
+    "lon": 35.34726,
+    "village": 3
+   },
+   {
+    "id": 33,
+    "lat": -0.90176,
+    "lon": 35.3546,
+    "village": 3
+   },
+   {
+    "id": 34,
+    "lat": -0.87653,
+    "lon": 35.34708,
+    "village": 3
+   },
+   {
+    "id": 35,
+    "lat": -0.90582,
+    "lon": 35.33545,
+    "village": 3
+   },
+   {
+    "id": 36,
+    "lat": -0.87766,
+    "lon": 35.32367,
+    "village": 3
+   },
+   {
+    "id": 37,
+    "lat": -0.88792,
+    "lon": 35.35198,
+    "village": 3
+   },
+   {
+    "id": 38,
+    "lat": -0.89919,
+    "lon": 35.35789,
+    "village": 3
+   },
+   {
+    "id": 39,
+    "lat": -0.88056,
+    "lon": 35.34028,
+    "village": 3
+   },
+   {
+    "id": 40,
+    "lat": -0.88775,
+    "lon": 35.33057,
+    "village": 4
+   },
+   {
+    "id": 41,
+    "lat": -0.8898,
+    "lon": 35.33553,
+    "village": 4
+   },
+   {
+    "id": 42,
+    "lat": -0.89762,
+    "lon": 35.31993,
+    "village": 4
+   },
+   {
+    "id": 43,
+    "lat": -0.88058,
+    "lon": 35.32434,
+    "village": 4
+   },
+   {
+    "id": 44,
+    "lat": -0.89981,
+    "lon": 35.33354,
+    "village": 4
+   },
+   {
+    "id": 45,
+    "lat": -0.87635,
+    "lon": 35.31963,
+    "village": 4
+   },
+   {
+    "id": 46,
+    "lat": -0.9048,
+    "lon": 35.32273,
+    "village": 4
+   },
+   {
+    "id": 47,
+    "lat": -0.89249,
+    "lon": 35.32109,
+    "village": 4
+   },
+   {
+    "id": 48,
+    "lat": -0.87695,
+    "lon": 35.31381,
+    "village": 4
+   },
+   {
+    "id": 49,
+    "lat": -0.8784,
+    "lon": 35.31139,
+    "village": 4
+   },
+   {
+    "id": 50,
+    "lat": -0.89111,
+    "lon": 35.24809,
+    "village": 5
+   },
+   {
+    "id": 51,
+    "lat": -0.87195,
+    "lon": 35.25036,
+    "village": 5
+   },
+   {
+    "id": 52,
+    "lat": -0.87978,
+    "lon": 35.24319,
+    "village": 5
+   },
+   {
+    "id": 53,
+    "lat": -0.88171,
+    "lon": 35.24752,
+    "village": 5
+   },
+   {
+    "id": 54,
+    "lat": -0.885,
+    "lon": 35.24455,
+    "village": 5
+   },
+   {
+    "id": 55,
+    "lat": -0.87751,
+    "lon": 35.24178,
+    "village": 5
+   },
+   {
+    "id": 56,
+    "lat": -0.87559,
+    "lon": 35.24743,
+    "village": 5
+   },
+   {
+    "id": 57,
+    "lat": -0.86313,
+    "lon": 35.24502,
+    "village": 5
+   },
+   {
+    "id": 58,
+    "lat": -0.88751,
+    "lon": 35.23805,
+    "village": 5
+   },
+   {
+    "id": 59,
+    "lat": -0.88337,
+    "lon": 35.25101,
+    "village": 5
+   },
+   {
+    "id": 60,
+    "lat": -0.80148,
+    "lon": 35.4223,
+    "village": 6
+   },
+   {
+    "id": 61,
+    "lat": -0.77974,
+    "lon": 35.3928,
+    "village": 6
+   },
+   {
+    "id": 62,
+    "lat": -0.80935,
+    "lon": 35.42088,
+    "village": 6
+   },
+   {
+    "id": 63,
+    "lat": -0.79413,
+    "lon": 35.42083,
+    "village": 6
+   },
+   {
+    "id": 64,
+    "lat": -0.80243,
+    "lon": 35.425,
+    "village": 6
+   },
+   {
+    "id": 65,
+    "lat": -0.79529,
+    "lon": 35.41322,
+    "village": 6
+   },
+   {
+    "id": 66,
+    "lat": -0.77381,
+    "lon": 35.422,
+    "village": 6
+   },
+   {
+    "id": 67,
+    "lat": -0.80366,
+    "lon": 35.41745,
+    "village": 6
+   },
+   {
+    "id": 68,
+    "lat": -0.80037,
+    "lon": 35.41782,
+    "village": 6
+   },
+   {
+    "id": 69,
+    "lat": -0.8254,
+    "lon": 35.41358,
+    "village": 6
+   },
+   {
+    "id": 70,
+    "lat": -0.8602,
+    "lon": 35.26189,
+    "village": 7
+   },
+   {
+    "id": 71,
+    "lat": -0.87095,
+    "lon": 35.28311,
+    "village": 7
+   },
+   {
+    "id": 72,
+    "lat": -0.86173,
+    "lon": 35.28849,
+    "village": 7
+   },
+   {
+    "id": 73,
+    "lat": -0.8873,
+    "lon": 35.27004,
+    "village": 7
+   },
+   {
+    "id": 74,
+    "lat": -0.8737,
+    "lon": 35.27981,
+    "village": 7
+   },
+   {
+    "id": 75,
+    "lat": -0.85937,
+    "lon": 35.24675,
+    "village": 7
+   },
+   {
+    "id": 76,
+    "lat": -0.8594,
+    "lon": 35.2591,
+    "village": 7
+   },
+   {
+    "id": 77,
+    "lat": -0.86346,
+    "lon": 35.25866,
+    "village": 7
+   },
+   {
+    "id": 78,
+    "lat": -0.86853,
+    "lon": 35.28552,
+    "village": 7
+   },
+   {
+    "id": 79,
+    "lat": -0.87178,
+    "lon": 35.27549,
+    "village": 7
+   },
+   {
+    "id": 80,
+    "lat": -0.74144,
+    "lon": 35.44886,
+    "village": 8
+   },
+   {
+    "id": 81,
+    "lat": -0.7503,
+    "lon": 35.46278,
+    "village": 8
+   },
+   {
+    "id": 82,
+    "lat": -0.73893,
+    "lon": 35.44451,
+    "village": 8
+   },
+   {
+    "id": 83,
+    "lat": -0.72196,
+    "lon": 35.43598,
+    "village": 8
+   },
+   {
+    "id": 84,
+    "lat": -0.74027,
+    "lon": 35.44479,
+    "village": 8
+   },
+   {
+    "id": 85,
+    "lat": -0.74809,
+    "lon": 35.4545,
+    "village": 8
+   },
+   {
+    "id": 86,
+    "lat": -0.74719,
+    "lon": 35.45384,
+    "village": 8
+   },
+   {
+    "id": 87,
+    "lat": -0.76469,
+    "lon": 35.43236,
+    "village": 8
+   },
+   {
+    "id": 88,
+    "lat": -0.74327,
+    "lon": 35.43782,
+    "village": 8
+   },
+   {
+    "id": 89,
+    "lat": -0.75968,
+    "lon": 35.43275,
+    "village": 8
+   },
+   {
+    "id": 90,
+    "lat": -0.74883,
+    "lon": 35.32267,
+    "village": 9
+   },
+   {
+    "id": 91,
+    "lat": -0.74676,
+    "lon": 35.30583,
+    "village": 9
+   },
+   {
+    "id": 92,
+    "lat": -0.76149,
+    "lon": 35.3038,
+    "village": 9
+   },
+   {
+    "id": 93,
+    "lat": -0.75383,
+    "lon": 35.3311,
+    "village": 9
+   },
+   {
+    "id": 94,
+    "lat": -0.7704,
+    "lon": 35.33081,
+    "village": 9
+   },
+   {
+    "id": 95,
+    "lat": -0.75161,
+    "lon": 35.31342,
+    "village": 9
+   },
+   {
+    "id": 96,
+    "lat": -0.78121,
+    "lon": 35.32927,
+    "village": 9
+   },
+   {
+    "id": 97,
+    "lat": -0.76246,
+    "lon": 35.30918,
+    "village": 9
+   },
+   {
+    "id": 98,
+    "lat": -0.7575,
+    "lon": 35.3193,
+    "village": 9
+   },
+   {
+    "id": 99,
+    "lat": -0.74651,
+    "lon": 35.305,
+    "village": 9
+   }
+  ],
+  "problems_today": [
+   {
+    "farm": 3,
+    "kind": "faw"
+   },
+   {
+    "farm": 3,
+    "kind": "mln"
+   },
+   {
+    "farm": 9,
+    "kind": "mln"
+   },
+   {
+    "farm": 10,
+    "kind": "faw"
+   },
+   {
+    "farm": 12,
+    "kind": "faw"
+   },
+   {
+    "farm": 13,
+    "kind": "faw"
+   },
+   {
+    "farm": 14,
+    "kind": "faw"
+   },
+   {
+    "farm": 15,
+    "kind": "faw"
+   },
+   {
+    "farm": 16,
+    "kind": "faw"
+   },
+   {
+    "farm": 20,
+    "kind": "mln"
+   },
+   {
+    "farm": 21,
+    "kind": "mln"
+   },
+   {
+    "farm": 22,
+    "kind": "mln"
+   },
+   {
+    "farm": 23,
+    "kind": "faw"
+   },
+   {
+    "farm": 23,
+    "kind": "mln"
+   },
+   {
+    "farm": 26,
+    "kind": "faw"
+   },
+   {
+    "farm": 27,
+    "kind": "mln"
+   },
+   {
+    "farm": 29,
+    "kind": "faw"
+   },
+   {
+    "farm": 31,
+    "kind": "faw"
+   },
+   {
+    "farm": 33,
+    "kind": "faw"
+   },
+   {
+    "farm": 37,
+    "kind": "faw"
+   },
+   {
+    "farm": 38,
+    "kind": "mln"
+   },
+   {
+    "farm": 40,
+    "kind": "faw"
+   },
+   {
+    "farm": 48,
+    "kind": "faw"
+   },
+   {
+    "farm": 51,
+    "kind": "mln"
+   },
+   {
+    "farm": 54,
+    "kind": "mln"
+   },
+   {
+    "farm": 59,
+    "kind": "mln"
+   },
+   {
+    "farm": 62,
+    "kind": "faw"
+   },
+   {
+    "farm": 65,
+    "kind": "mln"
+   },
+   {
+    "farm": 66,
+    "kind": "faw"
+   },
+   {
+    "farm": 72,
+    "kind": "faw"
+   },
+   {
+    "farm": 73,
+    "kind": "faw"
+   },
+   {
+    "farm": 75,
+    "kind": "faw"
+   },
+   {
+    "farm": 77,
+    "kind": "faw"
+   },
+   {
+    "farm": 79,
+    "kind": "faw"
+   },
+   {
+    "farm": 80,
+    "kind": "mln"
+   },
+   {
+    "farm": 81,
+    "kind": "mln"
+   },
+   {
+    "farm": 82,
+    "kind": "faw"
+   },
+   {
+    "farm": 82,
+    "kind": "mln"
+   },
+   {
+    "farm": 84,
+    "kind": "faw"
+   },
+   {
+    "farm": 85,
+    "kind": "mln"
+   },
+   {
+    "farm": 86,
+    "kind": "mln"
+   },
+   {
+    "farm": 88,
+    "kind": "mln"
+   },
+   {
+    "farm": 91,
+    "kind": "faw"
+   },
+   {
+    "farm": 92,
+    "kind": "mln"
+   },
+   {
+    "farm": 93,
+    "kind": "faw"
+   },
+   {
+    "farm": 93,
+    "kind": "mln"
+   }
+  ],
+  "picks": {
+   "rotation": [
+    {
+     "farm": 44,
+     "finds": []
+    },
+    {
+     "farm": 45,
+     "finds": []
+    },
+    {
+     "farm": 46,
+     "finds": []
+    },
+    {
+     "farm": 47,
+     "finds": []
+    }
+   ],
+   "officer": [
+    {
+     "farm": 32,
+     "finds": []
+    },
+    {
+     "farm": 33,
+     "finds": []
+    },
+    {
+     "farm": 34,
+     "finds": []
+    },
+    {
+     "farm": 35,
+     "finds": []
+    }
+   ],
+   "fieldwise": [
+    {
+     "farm": 95,
+     "finds": [],
+     "report": null,
+     "weather_risk": 0.9,
+     "mln_neighbours": 2,
+     "days_since_visit": 26,
+     "score": 0.605
+    },
+    {
+     "farm": 92,
+     "finds": [
+      "mln"
+     ],
+     "report": null,
+     "weather_risk": 0.9,
+     "mln_neighbours": 4,
+     "days_since_visit": 13,
+     "score": 0.574
+    },
+    {
+     "farm": 82,
+     "finds": [],
+     "report": null,
+     "weather_risk": 0.74,
+     "mln_neighbours": 4,
+     "days_since_visit": 13,
+     "score": 0.572
+    },
+    {
+     "farm": 66,
+     "finds": [
+      "faw"
+     ],
+     "report": "faw",
+     "weather_risk": 0.07,
+     "mln_neighbours": 0,
+     "days_since_visit": 21,
+     "score": 0.565
+    }
+   ]
+  },
+  "spotlight": [
+   {
+    "farm": 66,
+    "kind": "faw",
+    "onset": 44,
+    "first_visit": {
+     "rotation": 57,
+     "officer": 49,
+     "fieldwise": 50
+    }
+   },
+   {
+    "farm": 92,
+    "kind": "mln",
+    "onset": 40,
+    "first_visit": {
+     "rotation": null,
+     "officer": null,
+     "fieldwise": 50
+    }
+   }
+  ]
+ },
+ "seconds": 54.2
+}

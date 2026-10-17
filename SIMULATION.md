@@ -54,6 +54,59 @@ These weights are deliberately different from the true values above.
 
 The first committed version (846efb9) gave Fieldwise the simulation's true formulas. Before any comparison was run, it was replaced with separate rule-of-thumb weights. MLN neighbour spread was also halved after checking world statistics only (MLN had reached up to 52 of 100 farms in two months). No scheduling results had been seen at that point.
 
+## Results (200 seasons, `static/sim/results.json`)
+
+| Rule | 7-day reach | 5–95% of seasons | Fall armyworm | MLN |
+|---|---|---|---|---|
+| Basic rotation | 23.3% | 11.9–35.4% | 23.3% | 22.8% |
+| Experienced officer | 54.2% | 40.6–70.0% | 53.9% | 54.4% |
+| Fieldwise | 57.6% | 41.7–73.8% | 53.5% | 64.5% |
+
+- **Against basic rotation:** Fieldwise scored +34.3 points and was ahead in 198 of 200 seasons. This matched the expectation.
+- **Against the experienced officer:** +3.4 points on average; ahead in 125 seasons, tied in 20 and behind in 55. The 5–95% range (−10.0 to +17.2) crosses zero. This edge is small and inconsistent, so we don't present it as a reliable win.
+- **Where the edge comes from:** MLN, at 64.5% against 54.4%, from visiting farms next to known MLN. On fall armyworm Fieldwise and the officer are level, because both act on farmer reports.
+- **No-signal tests:**
+  - *Reports and weather scrambled:* Fieldwise still led rotation by +4.6 points, all from MLN. This did **not** match the expectation. The cause is Felix's own confirmed MLN finds, which still pointed to neighbouring farms. That is real information the scramble didn't touch.
+  - *Scrambled and own finds ignored* (a second control, added after that first result): +1.1 points, ahead in 98 of 200 seasons, so no better than rotation. This is the clean "no data, no advantage" result.
+- **Ablation** (Fieldwise against the officer):
+
+  | Fieldwise version | vs officer |
+  |---|---|
+  | All signals | +3.4 |
+  | Without weather | +3.9 |
+  | Without nearby MLN | −0.9 |
+  | Without Felix's own MLN finds | +2.0 |
+
+  The weather signal added nothing in this simulation. Nearby MLN is what matters.
+- **Weight sensitivity:** with Fieldwise's weights halved, normal and doubled, it scored +34.6, +34.3 and +33.1 points against rotation. The result doesn't depend on one lucky setting.
+- **Scale** (4 visits a day throughout):
+
+  | Farms per officer | Rotation | Officer | Fieldwise |
+  |---|---|---|---|
+  | 100 | 23.3% | 54.2% | 57.6% |
+  | 250 | 8.9% | 44.9% | 41.4% |
+  | 1,000 | 2.4% | 10.7% | 18.3% |
+
+  At 250 farms Fieldwise **trailed** the officer (−3.5 points). We report that as it came out, without retuning. At 1,000 farms everyone's reach collapses, which is the "same tool, much bigger problem" argument.
+
+### Added after the first comparison run
+
+These were added to explain or check results, never to improve Fieldwise's numbers:
+- the stricter no-signal control;
+- ahead/tied/behind counts;
+- per-crop paired results;
+- the data-source ablation.
+
+None of the world rates or Fieldwise's weights changed after the first comparison run.
+
+## Reproduce
+
+```bash
+.venv/Scripts/python.exe scripts/run_simulation.py
+```
+
+This takes about a minute. It is seeded, so it gives the same numbers every time. `tests/test_simulation.py` fails if `results.json` no longer matches the assumptions in the code.
+
 ## Limitations
 
 - Problems stay until visited. Real infestations change, and some become obvious to everyone.

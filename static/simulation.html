@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Fieldwise · Simulated 7-day reach</title><meta name="theme-color" content="#173c32"><link rel="manifest" href="/static/manifest.webmanifest"><link rel="icon" href="/static/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/static/style.css"><link rel="stylesheet" href="/static/impact.css"><link rel="stylesheet" href="/static/theme.css"><link rel="stylesheet" href="/static/simulation.css"><link rel="stylesheet" href="/static/a11y.css"><script defer src="/static/offline.js"></script><script defer src="/static/simulation.js"></script></head>
+<body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
+<aside class="sidebar" aria-label="Workspace navigation"><a class="brand" href="/" aria-label="Fieldwise home"><span class="brand-icon"><span class="ico" style="--ico:url(/static/icons/waves.svg)" aria-hidden="true"></span></span>fieldwise<span class="brand-dot">.</span></a><div class="workspace">SIMULATION <span>BOMET</span></div><nav aria-label="Sections"><a class="active" href="#overview"><span class="ico" style="--ico:url(/static/icons/chart-column.svg)" aria-hidden="true"></span> <span>7-day reach</span></a><a href="#controls"><span class="ico" style="--ico:url(/static/icons/circle-dashed.svg)" aria-hidden="true"></span> <span>No-signal tests</span></a><a href="#sources"><span class="ico" style="--ico:url(/static/icons/list.svg)" aria-hidden="true"></span> <span>Where the edge comes from</span></a><a href="#scale"><span class="ico" style="--ico:url(/static/icons/trending-up.svg)" aria-hidden="true"></span> <span>Scale</span></a><a href="#example"><span class="ico" style="--ico:url(/static/icons/map.svg)" aria-hidden="true"></span> <span>Example day</span></a><a href="#assumptions"><span class="ico" style="--ico:url(/static/icons/info.svg)" aria-hidden="true"></span> <span>Assumptions</span></a><a href="/felix"><span class="ico" style="--ico:url(/static/icons/arrow-left.svg)" aria-hidden="true"></span> <span>Kasungu workspace</span></a></nav><div class="sidebar-bottom"><small>Simulated seasons, not field data. No claim about crop losses avoided.</small></div></aside>
+<main id="overview"><span id="main-content" tabindex="-1"></span>
+<header class="topbar"><span>FIELDWISE <b>/</b> SIMULATION</span><a class="local" href="/api/simulation" download="fieldwise-simulation.json">Download results (JSON)</a></header>
+<section class="intro impact-hero" data-hero="impact">
+  <div class="hero-head"><div><div class="eyebrow"><span class="sim-badge">SIMULATED</span> BOMET COUNTY, KENYA · 100 FARMS · 4 VISITS A DAY</div><h1>How many new crop problems does Felix reach within 7 days?</h1><p id="hero-lede">Three ways of choosing Felix’s visits, tested on the same 200 simulated 60-day seasons.</p></div></div>
+  <div class="hero-stats" id="hero-stats" aria-label="7-day reach by scheduling rule"></div>
+  <p class="photo-credit">Photo: Eagle Vision IT, maize field in Syangja, Nepal, CC0</p>
+</section>
+<p id="load-error" class="error" role="alert" hidden></p>
+<section class="card sim-verdict" aria-labelledby="verdict-title"><h2 id="verdict-title">What the simulation shows</h2><ul id="verdict"></ul></section>
+
+<div class="section-heading"><div><span class="eyebrow">RESULT BY PROBLEM</span><h2>7-day reach by problem type</h2></div></div>
+<section class="card sim-chart-card"><div id="legend" class="sim-legend" aria-hidden="true"></div><div id="kind-chart" class="sim-chart"></div>
+<details><summary>Show as table</summary><div id="kind-table"></div></details>
+<p class="hint">Bars show the average over 200 seasons. Whiskers on “All problems” show the range from the 5th to 95th percentile season.</p></section>
+
+<div class="section-heading" id="controls"><div><span class="eyebrow">NO-SIGNAL TESTS</span><h2>Does the advantage come from the data?</h2></div></div>
+<section class="sim-two">
+  <article class="card sim-panel"><h3>Reports and weather scrambled</h3><p class="hint">Same reports and weather values, attached to random farms and villages. Felix’s own MLN finds still count.</p><div id="chart-nosignal" class="sim-chart small"></div><p id="text-nosignal"></p></article>
+  <article class="card sim-panel"><h3>Everything scrambled, own finds ignored</h3><p class="hint">As before, and confirmed MLN finds no longer raise neighbours’ priority. Fieldwise has no real signal left.</p><div id="chart-strict" class="sim-chart small"></div><p id="text-strict"></p></article>
+</section>
+
+<div class="section-heading" id="sources"><div><span class="eyebrow">WHERE THE EDGE COMES FROM</span><h2>Fieldwise with one data source switched off at a time</h2></div></div>
+<section class="sim-two">
+  <article class="card sim-panel"><h3>Data sources</h3><div id="ablation"></div></article>
+  <article class="card sim-panel"><h3>Fieldwise’s weights halved and doubled</h3><p class="hint">Fieldwise’s rule-of-thumb weights were never fitted to this simulation. A result that only held at one setting would be fragile.</p><div id="sensitivity"></div></article>
+</section>
+
+<div class="section-heading" id="scale"><div><span class="eyebrow">SCALE</span><h2>Same tool, bigger caseload</h2></div></div>
+<section class="card sim-chart-card"><p class="hint">Still 4 visits a day. 100 farms reflects an agribusiness, co-op or NGO field officer; 1,000 reflects government ratios in Kenya and South Africa.</p><div id="scale-chart" class="sim-chart"></div>
+<details><summary>Show as table</summary><div id="scale-table"></div></details><p id="scale-text"></p></section>
+
+<div class="section-heading" id="example"><div><span class="eyebrow">EXAMPLE DAY · ONE SIMULATED SEASON</span><h2 id="example-title">One day in Felix’s season</h2></div></div>
+<section class="card sim-example">
+  <div class="sim-map-wrap"><div class="sim-rule-switch" role="group" aria-label="Show visits chosen by"><button type="button" data-rule="fieldwise" aria-pressed="true">Fieldwise</button><button type="button" data-rule="officer" aria-pressed="false">Experienced officer</button><button type="button" data-rule="rotation" aria-pressed="false">Basic rotation</button></div><div id="sim-map"></div>
+  <ul class="map-legend" aria-label="Map key"><li><i class="k-farm"></i>Farm</li><li><i class="k-faw"></i>Fall armyworm so far</li><li><i class="k-mln"></i>MLN so far</li><li><i class="k-visit"></i>Visited today</li></ul></div>
+  <div class="sim-example-text"><p class="hint" id="example-note"></p><div id="picks"></div><div id="spotlight"></div></div>
+</section>
+
+<div class="section-heading" id="assumptions"><div><span class="eyebrow">ASSUMPTIONS</span><h2>Everything the numbers depend on</h2></div></div>
+<section class="sim-two">
+  <article class="card sim-panel"><h3>The simulated world</h3><div id="assumption-table"></div></article>
+  <article class="card sim-panel"><h3>Fieldwise’s own weights</h3><div id="prior-table"></div><h3>Limitations</h3><ul class="sim-limits"><li>Problems stay until Felix visits; real infestations change and some become obvious to everyone.</li><li>Travel time, road access and visit length are ignored.</li><li>The rates are plausible assumptions, not estimates fitted to Bomet field data.</li><li>Fieldwise’s weights are fixed here; in a pilot they would be learned from visit outcomes.</li></ul><p class="hint" id="provenance"></p></article>
+</section>
+<footer><span>Simulated seasons. Design and expectations were committed to git before the first comparison run; see SIMULATION.md.</span><a href="/impact">Impact metrics</a></footer>
+</main></body></html>

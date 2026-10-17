@@ -62,6 +62,17 @@ def create_app(db_path=None):
         return Response(body, status_code=response.status_code, media_type=response.media_type,
                         headers={k: v for k, v in response.headers.items() if k.lower() != 'content-length'})
 
+    @app.get('/simulation')
+    def simulation_page(): return FileResponse(ROOT / 'static' / 'simulation.html')
+
+    @app.get('/api/simulation')
+    def simulation_results():
+        # Precomputed by scripts/run_simulation.py (seeded, about a minute) so the page loads instantly and offline.
+        path = ROOT / 'static' / 'sim' / 'results.json'
+        if not path.exists():
+            raise HTTPException(404, 'No simulation results yet. Run scripts/run_simulation.py.')
+        return FileResponse(path, media_type='application/json')
+
     @app.get('/pilot')
     def pilot(): return FileResponse(ROOT / 'static' / 'pilot.html')
 

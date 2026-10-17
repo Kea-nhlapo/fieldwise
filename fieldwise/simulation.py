@@ -128,8 +128,9 @@ class World:
 class Officer:
     """Runs one scheduling rule through a season and records when each problem was first visited."""
 
-    def __init__(self, world, policy, prior=FieldwisePrior()):
+    def __init__(self, world, policy, prior=FieldwisePrior(), use_findings=True):
         self.w, self.policy, self.prior = world, policy, prior
+        self.use_findings = use_findings   # False: confirmed MLN finds do not raise neighbours' priority
         n = world.a.farms
         self.last_visit = [-30] * n
         self.open_reports = {}       # farm -> (day, kind)
@@ -177,13 +178,18 @@ class Officer:
                 start = w.onset.get((f, kind))
                 if start is not None and start <= day and (f, kind) not in self.found:
                     self.found[(f, kind)] = day
-                    if kind == 'mln':
+                    if kind == 'mln' and self.use_findings:
                         self.known_mln.add(f)
         self.log[day] = chosen
         return chosen
 
     def run(self, until=None):
         for day in range(self.w.a.days if until is None else until):
+            self.step(day)
+        return self
+
+    def run_from(self, start):
+        for day in range(start, self.w.a.days):
             self.step(day)
         return self
 
@@ -195,37 +201,101 @@ class Officer:
         return len(eligible), len(hit), by_kind
 
 
+def _paired(diffs):
+    """Mean and 5-95% range of per-season differences, plus seasons ahead, tied and behind."""
+    return dict(_summary(diffs), ahead=sum(d > 0 for d in diffs), tied=sum(d == 0 for d in diffs),
+                behind=sum(d < 0 for d in diffs), runs=len(diffs))
+
+
 def _summary(values):
     v = sorted(values)
     q = lambda p: v[min(len(v) - 1, int(p * len(v)))]
     return {'mean': round(100 * sum(v) / len(v), 1), 'p5': round(100 * q(.05), 1), 'p95': round(100 * q(.95), 1)}
 
 
-def compare(runs=200, a=Assumptions(), prior=FieldwisePrior(), scramble=False, first_seed=0):
-    """Paired comparison of all scheduling rules over `runs` seasons."""
+def compare(runs=200, a=Assumptions(), prior=FieldwisePrior(), scramble=False, use_findings=True, first_seed=0):
+    """Paired comparison of all scheduling rules over `runs` seasons.
+
+    scramble: shuffle reports and weather across farms. use_findings=False also stops Felix's own
+    confirmed MLN finds from raising neighbours' priority, so Fieldwise has no real signal at all.
+    """
     rates = {p: [] for p in POLICIES}
+    kind_rates = {p: {k: [] for k in KINDS} for p in POLICIES}
     kinds = {p: {k: [0, 0] for k in KINDS} for p in POLICIES}
     problems = []
     for seed in range(first_seed, first_seed + runs):
         world = World(seed, a, scramble)
         for p in POLICIES:
-            n, hit, by_kind = Officer(world, p, prior).run().reach()
+            n, hit, by_kind = Officer(world, p, prior, use_findings).run().reach()
             rates[p].append(hit / n if n else 0.0)
             for k, (e, h) in by_kind.items():
                 kinds[p][k][0] += e
                 kinds[p][k][1] += h
+                kind_rates[p][k].append(h / e if e else None)
         problems.append(n)
     diff = lambda x, y: [i - j for i, j in zip(rates[x], rates[y])]
+    kdiff = lambda k, x, y: [i - j for i, j in zip(kind_rates[x][k], kind_rates[y][k]) if i is not None and j is not None]
     return {
-        'runs': runs, 'signal': 'scrambled' if scramble else 'real',
+        'runs': runs, 'signal': ('scrambled' if scramble else 'real') + ('' if use_findings else ', own finds ignored'),
+        'by_kind_vs_officer': {k: _paired(kdiff(k, 'fieldwise', 'officer')) for k in KINDS},
         'problems_per_run': round(sum(problems) / len(problems), 1),
         'policies': {p: dict(_summary(rates[p]), label=POLICIES[p],
                              **{f'{k}_reach': round(100 * kinds[p][k][1] / max(1, kinds[p][k][0]), 1) for k in KINDS})
                      for p in POLICIES},
-        'fieldwise_minus_rotation': dict(_summary(diff('fieldwise', 'rotation')), wins=sum(d > 0 for d in diff('fieldwise', 'rotation'))),
-        'fieldwise_minus_officer': dict(_summary(diff('fieldwise', 'officer')), wins=sum(d > 0 for d in diff('fieldwise', 'officer'))),
+        'fieldwise_minus_rotation': _paired(diff('fieldwise', 'rotation')),
+        'fieldwise_minus_officer': _paired(diff('fieldwise', 'officer')),
     }
 
 
 def describe():
     return {'assumptions': asdict(Assumptions()), 'fieldwise_prior': asdict(FieldwisePrior()), 'policies': POLICIES}
+
+
+def example_day(max_seeds=60, a=Assumptions(), prior=FieldwisePrior()):
+    """Find a working day that shows both demo moments for Fieldwise:
+      1. it visits a farm because the farmer just reported fall armyworm (and the problem is real), and
+      2. it visits an unreported farm because MLN is known next door, and finds MLN nobody had found yet.
+    Chosen to illustrate the mechanism, not as a typical day; the averages come from compare()."""
+    for seed in range(max_seeds):
+        world = World(seed, a)
+        fw = Officer(world, 'fieldwise', prior)
+        for day in range(a.days - a.reach_window_days):
+            if day >= 10 and day % 7 < a.working_days_per_week:
+                picks = sorted(range(a.farms), key=lambda f: (-fw.score(f, day), f))[:a.visits_per_day]
+                unfound = lambda f, k: world.onset.get((f, k), 99) <= day and (f, k) not in fw.found
+                faw = [f for f in picks if fw.open_reports.get(f, (0, None))[1] == 'faw' and unfound(f, 'faw')]
+                mln = [f for f in picks if f not in fw.open_reports and unfound(f, 'mln')
+                       and any(g in fw.known_mln for g in world.near[f])]
+                if faw and mln:
+                    return _describe_day(world, prior, seed, day, faw[0], mln[0])
+            fw.step(day)
+    return None
+
+
+def _describe_day(world, prior, seed, day, faw_farm, mln_farm):
+    a = world.a
+    rules = {p: Officer(world, p, prior).run(until=day) for p in POLICIES}
+    reasons = {f: _why(rules['fieldwise'], f, day) for f in range(a.farms)}
+    unfound = {p: {f: [k for k in KINDS if world.onset.get((f, k), 99) <= day and (f, k) not in o.found] for f in range(a.farms)}
+               for p, o in rules.items()}
+    chosen = {p: o.step(day) for p, o in rules.items()}
+    for o in rules.values():
+        o.run_from(day + 1)
+    return {
+        'seed': seed, 'day': day,
+        'farms': [{'id': f, 'lat': round(lat, 5), 'lon': round(lon, 5), 'village': world.cluster[f]} for f, (lat, lon) in enumerate(world.farms)],
+        'problems_today': [{'farm': f, 'kind': k} for f in range(a.farms) for k in KINDS if world.onset.get((f, k), 99) <= day],
+        'picks': {p: [dict({'farm': f, 'finds': unfound[p][f]}, **(reasons[f] if p == 'fieldwise' else {})) for f in chosen[p]] for p in POLICIES},
+        'spotlight': [{'farm': f, 'kind': k, 'onset': world.onset[(f, k)],
+                       'first_visit': {p: o.found.get((f, k)) for p, o in rules.items()}}
+                      for f, k in ((faw_farm, 'faw'), (mln_farm, 'mln'))],
+    }
+
+
+def _why(officer, f, day):
+    w = officer.w
+    report = officer.open_reports.get(f)
+    return {'report': report[1] if report else None, 'weather_risk': round(w.observed[day // 7][w.cluster[f]], 2),
+            'mln_neighbours': sum(1 for g in w.near[f] if g in officer.known_mln),
+            'days_since_visit': day - officer.last_visit[f] if officer.last_visit[f] >= 0 else None,
+            'score': round(officer.score(f, day), 3)}

@@ -3,17 +3,17 @@
 // App shell: cache-first, refreshed in the background. GET /api/*: network-first,
 // falling back to the last saved response, stamped with when it was saved.
 // Writes are never cached here; static/offline.js queues them in an outbox.
-const VERSION = 'fieldwise-v7';
+const VERSION = 'fieldwise-v8';
 const SHELL = [
-  '/', '/felix', '/impact', '/pilot',
+  '/', '/felix', '/impact', '/pilot', '/simulation',
   '/static/style.css', '/static/disease.css', '/static/felix.css', '/static/evidence.css', '/static/a11y.css', '/static/theme.css', '/static/impact.css',
-  '/static/app.js', '/static/disease.js', '/static/felix.js', '/static/evidence.js', '/static/offline.js', '/static/crops.js', '/static/impact.js',
+  '/static/app.js', '/static/disease.js', '/static/felix.js', '/static/evidence.js', '/static/offline.js', '/static/simulation.js', '/static/simulation.css', '/static/sim/results.json', '/static/crops.js', '/static/impact.js',
   '/static/manifest.webmanifest', '/static/icon.svg',
   '/static/photos/crop-groundnuts.jpg', '/static/photos/crop-maize.jpg', '/static/photos/crop-tobacco.jpg', '/static/photos/crop-vegetables.jpg', '/static/photos/hero-impact.jpg', '/static/photos/hero-kasungu.jpg', '/static/photos/hero-pilot.jpg', '/static/photos/hero-sa.jpg',
   '/static/icons/arrow-left.svg', '/static/icons/arrow-right.svg', '/static/icons/arrow-up-right.svg', '/static/icons/bell.svg', '/static/icons/bug.svg', '/static/icons/chart-column.svg', '/static/icons/circle-dashed.svg', '/static/icons/clipboard-check.svg', '/static/icons/coins.svg', '/static/icons/droplets.svg', '/static/icons/flag.svg', '/static/icons/info.svg', '/static/icons/layout-dashboard.svg', '/static/icons/list.svg', '/static/icons/map-pin.svg', '/static/icons/map.svg', '/static/icons/route.svg', '/static/icons/smartphone.svg', '/static/icons/sprout.svg', '/static/icons/trending-up.svg', '/static/icons/triangle-alert.svg', '/static/icons/waves.svg', '/static/icons/wheat.svg',
   '/static/tshego/farms.json', '/static/tshego/kasungu_map.json', '/static/tshego/kasungu_weather.json',
 ];
-const API_WARM = ['/api/dashboard', '/api/felix/dashboard', '/api/felix/map', '/api/impact', '/api/disease/reference/demo'];
+const API_WARM = ['/api/dashboard', '/api/felix/dashboard', '/api/felix/map', '/api/impact', '/api/disease/reference/demo', '/api/simulation'];
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
