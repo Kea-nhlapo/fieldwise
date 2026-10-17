@@ -1,15 +1,12 @@
 'use strict';
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const GROUPS = {
-  'tiles-action': ['time_to_action', 'targeted_visits', 'officer_overrides', 'mean_shift'],
-  'tiles-trust': ['live_evidence', 'offline_synced', 'offline_delay', 'erasures'],
-};
+// The headline row shows activity and a measured outcome only; model estimates stay in their own group.
 const HERO = {
   farmer_signals: 'farmer signals collected',
   survey_response: 'of survey invitations answered',
   decisions_changed: 'of answers moved a farm’s priority',
-  maize_at_risk: 'kg of maize at risk found by farmer SMS replies (FAO-33 estimate)',
+  confirmed_visits: 'of visits with an outcome confirmed a problem',
 };
 const LABELS = {farmer_signal:'Farmer signal', priority_shift:'Priority shift', survey_queued:'Survey queued', survey_answered:'Survey answered',
   visit_recorded:'Visit recorded', officer_override:'Officer review', evidence_fetch:'Live data fetch', offline_sync:'Offline sync', erasure:'Erasure'};
@@ -19,7 +16,8 @@ function tile(m) {
   const ratio = m.denominator != null ? `<span class="ratio">${m.numerator} of ${m.denominator}</span>` : '';
   const value = m.value == null ? '<strong class="none">No data yet</strong>' : `<strong>${esc(m.value)}<small>${m.unit === '%' ? '%' : ' ' + esc(m.unit)}</small></strong>`;
   const bar = m.unit === '%' && m.value != null ? `<span class="meter" aria-hidden="true"><i style="width:${m.value}%"></i></span>` : '';
-  return `<article class="impact-tile"><h3>${esc(m.label)}</h3>${value}${bar}${ratio}<p>${esc(m.definition)}</p></article>`;
+  const badge = m.group === 'estimate' ? '<span class="estimate-badge">MODEL ESTIMATE</span>' : '';
+  return `<article class="impact-tile${m.group === 'estimate' ? ' estimate' : ''}">${badge}<h3>${esc(m.label)}</h3>${value}${bar}${ratio}<p>${esc(m.definition)}</p></article>`;
 }
 
 function chart(days) {
@@ -49,7 +47,8 @@ async function load() {
   const byId = Object.fromEntries(data.metrics.map(m => [m.id, m]));
   $('hero-stats').innerHTML = Object.entries(HERO).map(([id, label]) => { const m = byId[id];
     return `<div class="hero-stat" title="${esc(m.definition)}"><strong>${m.value == null ? '–' : esc(m.value)}${m.unit === '%' && m.value != null ? '<small>%</small>' : ''}</strong><span>${esc(label)}</span>${m.denominator != null ? `<em>${m.numerator} of ${m.denominator}</em>` : ''}</div>`; }).join('');
-  for (const [target, ids] of Object.entries(GROUPS)) $(target).innerHTML = ids.map(id => tile(byId[id])).join('');
+  for (const group of ['outcome', 'activity', 'estimate'])
+    $('tiles-' + group).innerHTML = data.metrics.filter(m => m.group === group && !(m.id in HERO)).map(tile).join('') || '<p class="empty">No metrics in this group yet.</p>';
   $('tracking').textContent = data.tracking_since ? `Tracking since ${when(data.tracking_since)}` : 'No events logged yet';
   const cached = response.headers.get('X-Fieldwise-Offline') === 'cached';
   $('generated').textContent = `${data.event_count} events · computed ${when(data.generated_at)}${cached ? ' · offline copy' : ''}`;

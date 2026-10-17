@@ -299,6 +299,8 @@ def register_felix(app, store, root):
             label = learning.label_from_outcomes(body.outcomes)
             if label is not None:
                 learning.record(db, learning.active_signals(assessed), label)
+                # Measured outcome: what Felix found, not what the score predicted.
+                store.record_impact('visit_outcome', 'kasungu', 'confirmed' if label else 'clear', 1, db=db)
             hours = None
             if farm.get('concern_open') and farm.get('reported_at'):
                 hours = (datetime.now(timezone.utc) - datetime.fromisoformat(farm['reported_at'])).total_seconds() / 3600

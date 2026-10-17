@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   $('erase-reports').addEventListener('click',async()=>{
     if(!confirm('Delete this demo farm’s local survey history, reports, corrections and visit notes? Environmental evidence and other farms remain.'))return;
     try {
-      const response=await fetch(`/api/felix/farms/${encodeURIComponent(selected)}/reports`,{method:'DELETE'});
+      const response=await Fieldwise.fetch(`/api/felix/farms/${encodeURIComponent(selected)}/reports`,{method:"DELETE"});
       if(!response.ok)throw new Error('Could not delete the local reports.');
       $('checkin').hidden=true;$('survey-consent').checked=false;activeSurvey=null;
       await reloadEvidence();feedback('Selected farm’s local reports deleted. Public environmental evidence retained.');

@@ -7,10 +7,14 @@ starts with 'CON ' (show a menu and wait) or 'END ' (close the session).
 The phone number is never stored or logged: the farmer identifies the farm by number,
 and the answers go through the same consent-checked check-in as the web flow.
 """
+import logging
 from urllib.parse import parse_qs
 
 from fastapi import HTTPException, Request
 from fastapi.responses import PlainTextResponse
+
+logger = logging.getLogger(__name__)
+MAX_TEXT = 64   # a full check-in is under 20 characters
 
 FOLLOW_UPS = ['Is more than one part of the field affected?', 'When did you first see this?']
 OPTIONS = [['Yes', 'No', 'Not sure'], ['One area', 'Several areas', 'Not sure'], ['Today', 'Before today', 'Not sure']]
@@ -34,8 +38,18 @@ def register_ussd(app, lookup_farm, submit_check_in):
 
     @app.post('/ussd', response_class=PlainTextResponse, tags=['USSD (Africa’s Talking format)'])
     async def ussd(request: Request):
-        fields = {k: v[0] for k, v in parse_qs((await request.body()).decode('utf-8', 'replace')).items()}
-        steps = [s.strip() for s in fields.get('text', '').split('*')] if fields.get('text') else []
+        # A USSD gateway shows whatever we return, so never answer with an HTTP error.
+        try:
+            fields = {k: v[0] for k, v in parse_qs((await request.body()).decode('utf-8', 'replace')).items()}
+            return respond(fields.get('text', ''))
+        except Exception:
+            logger.exception('USSD request failed')
+            return 'END Sorry, something went wrong. Please dial again.'
+
+    def respond(text):
+        if len(text) > MAX_TEXT:
+            return 'END Too many answers. Please dial again to restart.'
+        steps = [s.strip() for s in text.split('*')] if text else []
         if not steps:
             return 'CON Fieldwise crop check-in\nEnter your farm number (for example 14)'
         number = steps[0].lstrip('Ff').lstrip('0')
@@ -52,12 +66,19 @@ def register_ussd(app, lookup_farm, submit_check_in):
             return 'END Please answer with 1, 2 or 3. Dial again to restart.'
         answers = [int(a) for a in raw]
         if not branch_complete(answers):
+            if len(answers) >= len(OPTIONS) or past_branch_end(answers):
+                return 'END Too many answers. Please dial again to restart.'
             questions = [question] + FOLLOW_UPS
             return menu(questions[len(answers)], OPTIONS[len(answers)])
         try:
             submit_check_in(farm['id'], answers, survey_id)
         except HTTPException as error:
-            return f'END Could not save: {error.detail}'
+            return f'END Could not save: {str(error.detail)[:120]}'
         return 'END Thank you. Your extension officer has your answers.'
 
     return ussd
+
+
+def past_branch_end(answers):
+    """True when the answers already went beyond where this branch should have ended."""
+    return any(branch_complete(answers[:n]) for n in range(1, len(answers)))

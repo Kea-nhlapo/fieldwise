@@ -11,6 +11,7 @@ from .weather import demo_weather, fetch_forecast
 from .planning import plan_visits
 from .felix import register_felix
 from .impact import summarize
+from .auth import officer_pin, register_auth
 from .disease import CATALOG, condition_for_crop, local_monitoring, combined_priority, fetch_reference, demo_reference
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -33,7 +34,7 @@ class AlertReview(BaseModel):
     state: Literal['acknowledged', 'resolved']
 
 
-def create_app(db_path=None):
+def create_app(db_path=None, officer_pin_value=None):
     app = FastAPI(title='Fieldwise local prototype')
     store = Store(db_path or ROOT / 'data' / 'fieldwise.db')
     app.mount('/static', StaticFiles(directory=ROOT / 'static'), name='static')
@@ -51,7 +52,8 @@ def create_app(db_path=None):
                             headers={'X-Fieldwise-Replay': 'duplicate-ignored'})
         response = await call_next(request)
         body = b''.join([chunk async for chunk in response.body_iterator])
-        if response.status_code < 500:
+        # Refusals (no session, rate limited) are not results; the replay must be allowed to succeed later.
+        if response.status_code < 500 and response.status_code not in (401, 403, 429):
             store.remember(key, response.status_code, body)
         queued_at = request.headers.get('x-fieldwise-queued-at')
         if queued_at and response.status_code < 400:
@@ -78,6 +80,8 @@ def create_app(db_path=None):
 
     @app.get('/ussd-simulator')
     def ussd_simulator(): return FileResponse(ROOT / 'static' / 'phone.html')
+
+    register_auth(app, officer_pin(officer_pin_value))
 
     @app.get('/impact')
     def impact_index(): return FileResponse(ROOT / 'static' / 'impact.html')
@@ -150,11 +154,14 @@ def create_app(db_path=None):
     def reply(fid: str, body: Reply):
         before = evaluate(get_farm(fid))['priority']['score']
         label = {'1':'Irrigation working', '2':'Irrigation interrupted', '3':'No irrigation / rainfed'}[body.reply]
-        farm = store.update(fid, {'reply':body.reply}, 'reply', 'Simulated farmer reply: ' + label)
+        stopped = body.reply in ('2', '3')
+        # Count maize at risk once per interruption: a repeat report adds nothing until irrigation works again.
+        newly_at_risk = stopped and not get_farm(fid).get('maize_risk_logged')
+        farm = store.update(fid, {'reply':body.reply, 'maize_risk_logged':stopped}, 'reply', 'Simulated farmer reply: ' + label)
         store.record_impact('farmer_signal', 'sa', 'sms_reply', 1)
         after = evaluate(farm)
         store.record_impact('priority_shift', 'sa', 'sms_reply', after['priority']['score'] - before)
-        if body.reply in ('2', '3'):
+        if newly_at_risk:
             # A farmer reporting no working irrigation reveals the interrupted-scenario loss as maize at risk.
             store.record_impact('maize_at_risk', 'sa', 'sms_reply', after['yield_estimate']['at_stake_kg'])
         return {'status':'recorded', 'label':label}
