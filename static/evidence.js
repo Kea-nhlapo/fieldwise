@@ -34,6 +34,16 @@ function renderEvidence(farm) {
     $('survey-impact').innerHTML=`<span class="eyebrow">SURVEY #${answered.id}</span><h2>What the farmer’s answer changed</h2><div class="impact-values"><div><strong>${before.score}</strong><span>before this reply · rank ${before.rank}</span></div><b>→</b><div><strong>${after.score}</strong><span>after this reply · rank ${after.rank}</span></div><div><strong>${signed(delta)}</strong><span>change in triage points</span></div></div><p><strong>Officer action:</strong> ${esc(after.action)} · ${esc(after.status)}.</p><p class="hint">Recorded ${esc(stamp(answered.responded_at))}. Participation choice: ${esc(answered.notice_version)} at ${esc(stamp(answered.consented_at))}. It records the score before and after the answer; it does not test whether the score was right. Felix still reviews the report.</p>`;
   } else $('survey-impact').innerHTML='<span class="eyebrow">WHAT WE CAN DO WITH THE DATA</span><h2>No farmer answer yet for this farm</h2><p>Run a simulated check-in above. This panel then shows the score and queue position before and after the answer, plus the resulting officer action.</p>';
   $('privacy-export').href=`/api/felix/farms/${encodeURIComponent(selected)}/privacy-export`;
+  $('privacy-export').onclick=async event=>{
+    // A plain link cannot carry the officer token, so fetch the record and save it as a file.
+    event.preventDefault();
+    const response=await Fieldwise.fetch(event.currentTarget.href);
+    if(!response.ok){feedback('The farm record could not be exported: officer sign-in or a connection is needed.',true);return;}
+    const url=URL.createObjectURL(await response.blob());
+    const link=Object.assign(document.createElement('a'),{href:url,download:`fieldwise-${selected}-record.json`});
+    document.body.append(link);link.click();link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  };
 }
 
 async function reloadEvidence() {

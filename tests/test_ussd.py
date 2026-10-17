@@ -138,9 +138,34 @@ class UssdGatewayTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             client = TestClient(create_app(Path(tmp) / 'test.db', officer_pin_value='4821', ussd_key_value=''))
             self.assertEqual(self.post(client, '/api/ussd/simulate').status_code, 401)
-            client.post('/api/session', json={'pin': '4821'})
+            client.headers['X-Officer-Token'] = client.post('/api/session', json={'pin': '4821'}).json()['officer_token']
             self.assertTrue(self.post(client, '/api/ussd/simulate').text.startswith('CON'))
             client.close()
+
+
+    def test_key_in_a_header_is_accepted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            client = TestClient(create_app(Path(tmp) / 'test.db', ussd_key_value=KEY))
+            body = urlencode({'sessionId': 'h', 'serviceCode': '*384#', 'phoneNumber': PHONE, 'text': ''})
+            r = client.post('/ussd', content=body, headers={'Content-Type': 'application/x-www-form-urlencoded', 'X-Fieldwise-Ussd-Key': KEY})
+            self.assertTrue(r.text.startswith('CON'))
+            client.close()
+
+
+class AccessLogRedactionTests(unittest.TestCase):
+    def test_uvicorn_access_lines_never_contain_the_key(self):
+        import logging
+        from fieldwise.ussd import RedactUssdKey
+        with tempfile.TemporaryDirectory() as tmp:
+            create_app(Path(tmp) / 'test.db', ussd_key_value=KEY)
+        self.assertTrue(any(isinstance(f, RedactUssdKey) for f in logging.getLogger('uvicorn.access').filters))
+        # Same shape as uvicorn's access log record.
+        record = logging.LogRecord('uvicorn.access', logging.INFO, '', 0, '%s - "%s %s HTTP/%s" %d',
+                                   ('127.0.0.1:5000', 'POST', f'/ussd?key={KEY}&x=1', '1.1', 200), None)
+        RedactUssdKey().filter(record)
+        line = record.getMessage()
+        self.assertNotIn(KEY, line)
+        self.assertIn('/ussd?key=[REDACTED]&x=1', line)
 
 
 if __name__ == '__main__':

@@ -10,12 +10,38 @@ and the answers go through the same consent-checked check-in as the web flow.
 import hmac
 import logging
 import os
+import re
 from urllib.parse import parse_qs
 
 from fastapi import HTTPException, Request
 from fastapi.responses import PlainTextResponse
 
 logger = logging.getLogger(__name__)
+KEY_HEADER = 'X-Fieldwise-Ussd-Key'
+_KEY_IN_URL = re.compile(r'([?&]key=)[^&\s"]*')
+
+
+class RedactUssdKey(logging.Filter):
+    """Access logs record full URLs. Providers that can only call a plain URL send the key as ?key=,
+    so replace its value before the line is written. (A proxy in front of the server needs the same.)"""
+
+    def filter(self, record):
+        if isinstance(record.args, tuple):
+            record.args = tuple(redact(a) if isinstance(a, str) else a for a in record.args)
+        if isinstance(record.msg, str):
+            record.msg = redact(record.msg)
+        return True
+
+
+def redact(text):
+    """Replace the value of any key= query parameter, keeping the parameter name."""
+    return _KEY_IN_URL.sub(lambda m: m.group(1) + '[REDACTED]', text)
+
+
+def redact_access_logs():
+    access = logging.getLogger('uvicorn.access')
+    if not any(isinstance(f, RedactUssdKey) for f in access.filters):
+        access.addFilter(RedactUssdKey())
 MAX_TEXT = 64   # a full check-in is under 20 characters
 
 FOLLOW_UPS = ['Is more than one part of the field affected?', 'When did you first see this?']
@@ -45,6 +71,7 @@ def register_ussd(app, lookup_farm, submit_check_in, key=None, service_code=None
     service_code = service_code if service_code is not None else os.environ.get('FIELDWISE_USSD_CODE', '')
     if not key:
         logger.warning('FIELDWISE_USSD_KEY is not set: the /ussd provider callback is switched off.')
+    redact_access_logs()
 
     async def form(request):
         return {k: v[0] for k, v in parse_qs((await request.body()).decode('utf-8', 'replace')).items()}
@@ -61,7 +88,9 @@ def register_ussd(app, lookup_farm, submit_check_in, key=None, service_code=None
     async def ussd(request: Request):
         if not key:
             return PlainTextResponse('USSD callback is switched off. Set FIELDWISE_USSD_KEY.', status_code=404)
-        if not hmac.compare_digest(request.query_params.get('key', '').encode(), key.encode()):
+        # Prefer the header (never in URLs or access logs); ?key= is accepted for providers that only call a URL.
+        supplied = request.headers.get(KEY_HEADER) or request.query_params.get('key', '')
+        if not hmac.compare_digest(supplied.encode(), key.encode()):
             return PlainTextResponse('Not a registered USSD gateway.', status_code=403)
         fields = await form(request)
         if service_code and fields.get('serviceCode', '') != service_code:

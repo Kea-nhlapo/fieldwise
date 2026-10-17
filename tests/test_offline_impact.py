@@ -177,3 +177,24 @@ class MaizeAtRiskCountingTests(unittest.TestCase):
         self.client.post('/api/farms/siyakhula/reply', json={'reply': '1'})
         self.client.post('/api/farms/siyakhula/reply', json={'reply': '2'})
         self.assertEqual(self.at_risk()[0], 2, 'a new interruption after irrigation worked again counts')
+
+
+class ConcurrencyTests(unittest.TestCase):
+    def test_reset_commits_while_another_request_is_reading(self):
+        # Regression: a dashboard read held open while scoring farms made the demo reset fail with
+        # 'database is locked' after a 10 s wait. WAL lets the write commit alongside the read.
+        import sqlite3
+        import time
+        from fieldwise.storage import Store
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'test.db'
+            store = Store(path)
+            reader = sqlite3.connect(path)
+            try:
+                reader.execute('BEGIN')
+                reader.execute('SELECT * FROM farms').fetchall()   # read transaction stays open
+                started = time.time()
+                store.reset_demo()
+                self.assertLess(time.time() - started, 2)
+            finally:
+                reader.close()

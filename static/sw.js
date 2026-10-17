@@ -3,7 +3,7 @@
 // App shell: cache-first, refreshed in the background. GET /api/*: network-first,
 // falling back to the last saved response, stamped with when it was saved.
 // Writes are never cached here; static/offline.js queues them in an outbox.
-const VERSION = 'fieldwise-v13';
+const VERSION = 'fieldwise-v15';
 const SHELL = [
   '/', '/felix', '/impact', '/pilot', '/simulation',
   '/static/style.css', '/static/disease.css', '/static/felix.css', '/static/evidence.css', '/static/a11y.css', '/static/theme.css', '/static/sidebar.css', '/static/icons.css', '/static/impact.css',
@@ -18,7 +18,14 @@ const SHELL = [
 const OPEN_READS = ['/api/health', '/api/session', '/api/impact', '/api/simulation', '/api/disease/reference', '/api/felix/map'];
 const isRecord = path => path.startsWith('/api/') && !OPEN_READS.some(open => path.startsWith(open));
 
+// Bumped by every sign-out. A record request that started under an older generation was made for a
+// session that has since ended: its response is neither cached nor returned as signed-in data.
+let generation = 0;
+const signedOut = () => new Response(JSON.stringify({detail: 'Officer PIN required.', auth: 'required'}),
+  {status: 401, headers: {'Content-Type': 'application/json', 'Cache-Control': 'no-store'}});
+
 async function forgetRecords() {
+  generation++;
   for (const name of await caches.keys()) {
     const cache = await caches.open(name);
     for (const request of await cache.keys()) if (isRecord(new URL(request.url).pathname)) await cache.delete(request);
@@ -44,22 +51,31 @@ self.addEventListener('activate', event => {
   })());
 });
 
-async function stamp(cache, request, response) {
+async function stamp(cache, request, response, since = null) {
   const headers = new Headers(response.headers);
   headers.set('X-Fieldwise-Cached-At', new Date().toISOString());
-  await cache.put(request, new Response(await response.clone().blob(), {status: response.status, headers}));
+  // Fetched under an officer session: only a request that still carries a token may read it offline.
+  if (request.headers && request.headers.get('X-Officer-Token')) headers.set('X-Fieldwise-Token-Required', '1');
+  const body = await response.clone().blob();
+  if (since !== null && since !== generation) return;   // signed out while the body was arriving
+  await cache.put(request, new Response(body, {status: response.status, headers}));
 }
 
 async function networkFirst(request) {
   const cache = await caches.open(VERSION);
+  const record = isRecord(new URL(request.url).pathname);
+  const started = generation;
   try {
     const response = await fetch(request);
-    if (response.ok) await stamp(cache, request, response.clone());
+    if (record && started !== generation) return signedOut();
+    if (response.ok) await stamp(cache, request, response.clone(), record ? started : null);
     // The server says there is no session: nobody on this device may read the saved records any more.
     else if (response.status === 401 && isRecord(new URL(request.url).pathname)) await forgetRecords();
     return response;
   } catch (error) {
     const cached = await cache.match(request);
+    // Offline: records saved under a session only go to a page that still holds this device's officer token.
+    if (record && cached && cached.headers.get('X-Fieldwise-Token-Required') === '1' && !request.headers.get('X-Officer-Token')) return signedOut();
     if (!cached) return new Response(JSON.stringify({detail: 'Offline and this data has not been saved on this device yet.', offline: true}),
       {status: 503, headers: {'Content-Type': 'application/json', 'X-Fieldwise-Offline': 'no-cache'}});
     const headers = new Headers(cached.headers);

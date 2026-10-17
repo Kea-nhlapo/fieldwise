@@ -45,10 +45,10 @@ The 6-minute pitch, with clicks and expected numbers, is in [DEMO-SCRIPT.md](DEM
 | Live public data | Open-Meteo weather, ISRIC SoilGrids soil and OpenStreetMap requests, each saved with a timestamped receipt. Failures are shown, not hidden. |
 | Explained priority | Every score breaks down into environment, farmer report, officer correction and learned points. The officer can override it. |
 | Survey targeting | For each farm, Fieldwise scores both possible answers and asks the farmers whose answer would change the day's visits. |
-| USSD check-in | `/ussd` answers in Africa's Talking's callback format (`CON`/`END`), with consent first and branching questions. It is fuzz-tested so bad farmer input never produces an error page. The provider callback only accepts requests carrying `FIELDWISE_USSD_KEY`; the in-app phone simulator uses an officer-only route. Telecom delivery is **not** provisioned. |
+| USSD check-in | `/ussd` answers in Africa's Talking's callback format (`CON`/`END`), with consent first and branching questions. It is fuzz-tested so bad farmer input never produces an error page. The provider callback only accepts requests carrying `FIELDWISE_USSD_KEY`, sent in an `X-Fieldwise-Ussd-Key` header or, for providers that can only call a URL, as `?key=`. That value is redacted from Uvicorn's access log. The in-app phone simulator uses an officer-only route. Telecom delivery is **not** provisioned. |
 | Learning from visits | One-tap visit outcomes update a Beta–Bernoulli estimate of how often each signal turns out to be a real problem. |
 | Offline-first | A service worker caches the app. An outbox holds offline actions and syncs each one exactly once. |
-| Officer access | A PIN guards every change and every read of farmer records. Sessions last 12 hours, and five wrong PINs lock sign-in for 5 minutes. **Sign out** deletes cached farm records and unsynced actions from the device. |
+| Officer access | A PIN guards every change and every read of farmer records. Each signed-in request needs both an HttpOnly cookie and a per-device officer token. **Sign out** works offline and from any page: it deletes the token, cached farm records and unsynced actions, ignores responses that were still on their way, and signs out every open tab. Sessions last 12 hours, and five wrong PINs lock sign-in for 5 minutes. |
 | Impact metrics | `/impact`, split into measured outcomes, activity and labelled model estimates. Each metric has a definition, and the de-identified event log is downloadable. |
 | Simulation | `/simulation`: 200 seeded seasons, with an experienced-officer comparison, no-signal controls, ablation, weight sensitivity and a scale test. See [SIMULATION.md](SIMULATION.md). |
 | Water model | pyfao56 water balance for the South Africa farms. See [MODEL.md](MODEL.md). |
@@ -69,7 +69,7 @@ We make no claim about crop losses avoided.
 
 These are known gaps, not oversights:
 
-- **USSD delivery.** Register `/ussd` with a USSD code from a provider, and set `FIELDWISE_USSD_KEY`. Without that key the callback is switched off.
+- **USSD delivery.** Register `/ussd` with a USSD code from a provider, and set `FIELDWISE_USSD_KEY`. Without that key the callback is switched off. If a reverse proxy sits in front of the server, configure it not to log the `key` query parameter, or have the gateway send the header instead.
 - **Tying a caller to a farm.** Anyone who knows a farm number can answer for it. The proposed fix is a short farm code printed on each farmer's card: it avoids storing phone numbers, at the cost of one extra step. See the pilot plan (`/pilot`).
 - **Offline data at rest.** Cached records are deleted on sign-out, but they are not encrypted while signed in.
 - **Accounts.** There is one shared officer PIN, with no per-officer accounts or audit trail of who changed what.
@@ -96,7 +96,8 @@ node scripts/record-demo.cjs http://127.0.0.1:<port>
 What each one does:
 - **Unit tests:** 90+ tests.
 - **`offline-a11y-check.cjs`:** offline install, outbox sync and accessibility.
-- **`pin-check.cjs`:** the sign-in and sign-out flow. Run it against a server started with a PIN.
+- **`pin-check.cjs`:** the sign-in flow. Run it against a server started with a PIN.
+- **`signout-check.cjs`:** six sign-out scenarios: API sign-out, offline button sign-out, reconnecting, a response still in flight, reopening via the phone simulator, and a second tab. Run it against a server started with a PIN.
 - **`record-demo.cjs`:** plays the whole stage demo and saves screenshots.
 - **`run_simulation.py`:** reproduces the simulation results (seeded, about a minute).
 

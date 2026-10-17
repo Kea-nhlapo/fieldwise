@@ -216,7 +216,8 @@ def register_felix(app, store, root):
     @router.get('/dashboard')
     def dashboard():
         with store.connect() as db:
-            current = [evaluate(json.loads(r[0])) for r in db.execute('SELECT payload FROM felix_farms')]
+            rows = db.execute('SELECT payload FROM felix_farms').fetchall()   # read first; scoring opens its own connections
+            current = [evaluate(json.loads(r[0])) for r in rows]
             for farm in current:
                 farm['surveys'] = [json.loads(row[0]) for row in db.execute('SELECT payload FROM felix_surveys WHERE farm_id=? ORDER BY id DESC', (farm['id'],))]
             activity = [dict(zip(('id','farm_id','kind','text','created_at'), row)) for row in

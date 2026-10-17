@@ -5,10 +5,18 @@
   const KEY = 'fieldwise-outbox-v1';
   // Live-data fetches need the internet anyway, so they are not queued.
   // Sign-in and demo reset only make sense live, so they are not queued either.
-  const NOT_QUEUEABLE = /\/evidence\/|\/weather$|\/disease\/reference|\/api\/session|\/api\/demo\/reset/;
+  const NOT_QUEUEABLE = /\/evidence\/|\/weather$|\/disease\/reference|\/api\/session|\/api\/demo\/reset|\/api\/ussd\/simulate/;
   let memory = [], cachedAt = null, syncing = false, failures = [], needsPin = false, signInPromise = null;
   const auth = {enabled: false, signedIn: false};
   const SIGNOUT_KEY = 'fieldwise-signout-pending';
+  // Second credential next to the HttpOnly cookie (see fieldwise/auth.py). Deleting it signs this device out
+  // at once, even offline and from any page, because the server refuses the cookie without it.
+  const TOKEN_KEY = 'fieldwise-officer-token';
+  let memoryToken = null;
+  const getToken = () => { try { return localStorage.getItem(TOKEN_KEY); } catch { return memoryToken; } };
+  const setToken = value => { memoryToken = value; try { value ? localStorage.setItem(TOKEN_KEY, value) : localStorage.removeItem(TOKEN_KEY); } catch {} };
+  const withToken = (headers = {}) => { const token = getToken(); return token ? {...headers, 'X-Officer-Token': token} : {...headers}; };
+  const channel = 'BroadcastChannel' in window ? new BroadcastChannel('fieldwise-session') : null;
   // Reads without farmer records (mirrors OPEN_READS in fieldwise/auth.py and static/sw.js).
   const OPEN_READS = ['/api/health', '/api/session', '/api/impact', '/api/simulation', '/api/disease/reference', '/api/felix/map'];
   const isRecord = path => path.startsWith('/api/') && !OPEN_READS.some(open => path.startsWith(open));
@@ -51,6 +59,8 @@
     if (read().length && navigator.onLine) await sync();
     const left = read().length;
     if (left && !confirm(`${left} action${left === 1 ? ' has' : 's have'} not reached the server yet. Signing out deletes ${left === 1 ? 'it' : 'them'} from this device. Sign out anyway?`)) return;
+    setToken(null);   // first: from here on no request from this device counts as signed in
+    channel?.postMessage('signed-out');
     write([]); failures = [];
     await forgetRecords();
     const ended = await fetch('/api/session', {method: 'DELETE'}).then(r => r.ok).catch(() => false);
@@ -71,11 +81,15 @@
   let ready = finishPendingSignOut();
 
   async function refreshSession() {
-    const state = await fetch('/api/session').then(r => r.ok ? r.json() : null).catch(() => null);
+    const state = await fetch('/api/session', {headers: withToken()}).then(r => r.ok ? r.json() : null).catch(() => null);
     if (state) { auth.enabled = state.auth_enabled; auth.signedIn = state.signed_in; render(); }
   }
 
-  const isAuthRefusal = async response => response.status === 401 && (await response.clone().json().catch(() => ({}))).auth === 'required';
+  const isAuthRefusal = async response => {
+    if (response.status !== 401 || (await response.clone().json().catch(() => ({}))).auth !== 'required') return false;
+    setToken(null);   // the server session is gone, so this device's token is stale
+    return true;
+  };
 
   // Officer PIN dialog. Concurrent requests share one prompt; resolves true once signed in.
   function signIn() {
@@ -108,7 +122,12 @@
       form.onsubmit = async event => {
         event.preventDefault();
         const response = await fetch('/api/session', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({pin: input.value})}).catch(() => null);
-        if (response && response.ok) { auth.enabled = auth.signedIn = true; return done(true); }
+        if (response && response.ok) {
+          const body = await response.json().catch(() => ({}));
+          setToken(body.officer_token || null);
+          auth.enabled = auth.signedIn = true;
+          return done(true);
+        }
         const body = response ? await response.json().catch(() => ({})) : {};
         error.textContent = body.detail || 'No connection to the Fieldwise server.';
         input.select();
@@ -121,7 +140,7 @@
 
   // Only outbox replays carry X-Fieldwise-Queued-At; a direct online send is not an offline sync.
   async function send(item, replay = false) {
-    const headers = {'Content-Type': 'application/json', 'Idempotency-Key': item.key};
+    const headers = withToken({'Content-Type': 'application/json', 'Idempotency-Key': item.key});
     if (replay) headers['X-Fieldwise-Queued-At'] = item.queuedAt;
     return fetch(item.url, {method: item.method, body: item.body, headers});
   }
@@ -152,8 +171,9 @@
     await ready;
     const method = (options.method || 'GET').toUpperCase();
     if (method === 'GET') {
-      let response = await fetch(url, options);
-      if (await isAuthRefusal(response) && await signIn()) response = await fetch(url, options);
+      const get = () => fetch(url, {...options, headers: withToken(options.headers)});
+      let response = await get();
+      if (await isAuthRefusal(response) && await signIn()) response = await get();
       if (String(url).startsWith('/api/dashboard') || String(url).startsWith('/api/felix/dashboard')) {
         cachedAt = response.headers.get('X-Fieldwise-Offline') === 'cached' ? response.headers.get('X-Fieldwise-Cached-At') : null;
         render();
@@ -174,7 +194,16 @@
     return response;
   }
 
+  // Another tab signed out: stop showing records at once and reload into the signed-out state.
+  function onSignedOutElsewhere() {
+    document.body.style.visibility = 'hidden';
+    location.reload();
+  }
+  channel?.addEventListener('message', event => { if (event.data === 'signed-out') onSignedOutElsewhere(); });
+  addEventListener('storage', event => { if (event.key === TOKEN_KEY && !event.newValue && event.oldValue) onSignedOutElsewhere(); });
+
   function mount() {
+    if (document.body.dataset.banner === 'off') return;
     banner = document.createElement('div');
     banner.className = 'connection';
     banner.setAttribute('role', 'status');

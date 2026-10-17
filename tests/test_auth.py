@@ -19,7 +19,10 @@ class OfficerPinTests(unittest.TestCase):
         self.tmp.cleanup()
 
     def sign_in(self, pin=PIN):
-        return self.client.post('/api/session', json={'pin': pin})
+        r = self.client.post('/api/session', json={'pin': pin})
+        if r.status_code == 200:
+            self.client.headers['X-Officer-Token'] = r.json()['officer_token']
+        return r
 
     def test_writes_and_farmer_records_need_a_session(self):
         for method, path, body in [('post', '/api/felix/farms/F014/visit', {'notes': 'x'}), ('post', '/api/farms/makhaya/reply', {'reply': '2'}),
@@ -50,6 +53,15 @@ class OfficerPinTests(unittest.TestCase):
         self.client.delete('/api/session')
         self.assertEqual(self.client.post('/api/felix/farms/F014/visit', json={'notes': 'Again'}).status_code, 401)
 
+    def test_cookie_without_the_device_token_is_refused(self):
+        # A device that signed out offline still holds the cookie, but has deleted its token.
+        self.sign_in()
+        del self.client.headers['X-Officer-Token']
+        self.assertEqual(self.client.get('/api/felix/dashboard').status_code, 401)
+        self.assertFalse(self.client.get('/api/session').json()['signed_in'])
+        self.client.headers['X-Officer-Token'] = 'guessed'
+        self.assertEqual(self.client.post('/api/felix/farms/F014/visit', json={'notes': 'x'}).status_code, 401)
+
     def test_repeated_wrong_pins_lock_sign_in(self):
         for _ in range(5):
             self.sign_in('1111')
@@ -78,7 +90,7 @@ class RecordCachingTests(unittest.TestCase):
     def test_farmer_records_are_not_stored_by_the_browser_cache(self):
         with tempfile.TemporaryDirectory() as tmp:
             client = TestClient(create_app(Path(tmp) / 'test.db', officer_pin_value=PIN))
-            client.post('/api/session', json={'pin': PIN})
+            client.headers['X-Officer-Token'] = client.post('/api/session', json={'pin': PIN}).json()['officer_token']
             self.assertEqual(client.get('/api/felix/dashboard').headers.get('cache-control'), 'no-store')
             self.assertNotEqual(client.get('/api/impact').headers.get('cache-control'), 'no-store')
             client.close()
