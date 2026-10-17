@@ -1,138 +1,231 @@
-"""Simulated 7-day reach: does Fieldwise's ranking help Felix reach new problems sooner?
+"""Simulated 7-day reach: does Fieldwise's ranking help Felix reach new crop problems sooner?
 
-SIMULATED, NOT FIELD DATA. Every number comes from the assumptions in ASSUMPTIONS below,
-which were fixed before the first comparison run. Problems appear on their own timeline,
-independent of any scheduling rule, and every rule faces the identical timeline per run.
+SIMULATED, NOT FIELD DATA. Every number comes from the assumptions below.
+
+Design rules, fixed before the first comparison run:
+  * Problems (fall armyworm, maize lethal necrosis) appear on their own timeline. No scheduling
+    rule changes when or where a problem starts, so we never claim avoided crop loss.
+  * Every scheduling rule faces the identical timeline in each run (paired comparison).
+  * Fieldwise does not know the simulation's true rates. It ranks with its own rule-of-thumb
+    weights (FieldwisePrior), and we rerun it with those weights halved and doubled.
+  * A no-signal run scrambles reports and weather across farms. If Fieldwise still won there,
+    the win would come from the set-up rather than the data.
 """
 import math
 import random
-from functools import lru_cache
+from dataclasses import asdict, dataclass, replace
 
-ASSUMPTIONS = {
-    'farms': 100, 'clusters': 10, 'area': 'Bomet County, Kenya (synthetic layout around -0.78, 35.34)',
-    'days': 60, 'visits_per_day': 4, 'working_days_per_week': 5,
-    'faw_daily_hazard': '0.002 × (1 + 2 × weather risk), weather risk 0–1 per cluster per week',
-    'mln_seeds': 2, 'mln_daily_hazard': '0.0005 + 0.01 per infected farm within 2 km',
-    'report_chance': 0.4, 'report_delay_days': '1–5', 'false_reports_per_farm_day': 0.002,
-    'weather_noise': '±0.2 on the observed weather risk',
-    'reach_window_days': 7, 'runs': 200,
-    'fieldwise_knows': 'the hazard formulas above (in a real pilot these would have to be learned)',
-    'travel': 'ignored; every visit costs the same',
+KINDS = ('faw', 'mln')
+
+
+@dataclass(frozen=True)
+class Assumptions:
+    farms: int = 100
+    farms_per_cluster: int = 10          # farms grouped in villages
+    days: int = 60
+    visits_per_day: int = 4
+    working_days_per_week: int = 5
+    centre: tuple = (-0.78, 35.34)       # Bomet County, Kenya
+    area_half_width_deg: float = 0.12    # cluster centres within ±0.12° (about ±13 km) for 100 farms
+    cluster_sd_deg: float = 0.01         # farms within a village spread about 1 km
+    faw_daily_risk: float = 0.002        # fall armyworm: chance per farm per day in a neutral week
+    faw_weather_gain: float = 2.0        # a warm, dry week (risk 1.0) triples the chance
+    mln_first_cases: int = 2
+    mln_background_risk: float = 0.0005
+    mln_risk_per_infected_neighbour: float = 0.005
+    neighbour_km: float = 2.0
+    report_chance: float = 0.4           # share of real problems a farmer reports
+    report_delay_days: tuple = (1, 5)
+    false_reports_per_farm_day: float = 0.002
+    weather_noise: float = 0.2           # observed weather risk = true ± this
+    reach_window_days: int = 7
+
+
+@dataclass(frozen=True)
+class FieldwisePrior:
+    """Fieldwise's own ranking weights. Set from rules of thumb, not fitted to the simulation."""
+    daily_risk: float = 0.003            # rough chance a farm develops a problem worth a visit
+    weather_gain: float = 1.0            # a warm, dry week roughly doubles fall armyworm risk
+    neighbour_gain: float = 5.0          # each farm with known MLN within 2 km multiplies MLN risk
+    report_weight: float = 0.5           # chance a farmer report turns out to be real
+
+    def scaled(self, factor):
+        return replace(self, weather_gain=self.weather_gain * factor, neighbour_gain=self.neighbour_gain * factor)
+
+
+POLICIES = {
+    'rotation': 'Basic rotation: every farm in turn, village by village',
+    'officer': 'Experienced officer: reported farms first, oldest report first, then whoever has waited longest',
+    'fieldwise': 'Fieldwise: rank by farmer reports, weather risk and nearby MLN',
 }
-NEIGHBOUR_KM = 2.0
 
 
 def _km(a, b):
-    return 111 * math.hypot(a[0] - b[0], (a[1] - b[1]) * math.cos(math.radians(a[0])))
+    return 111.0 * math.hypot(a[0] - b[0], (a[1] - b[1]) * math.cos(math.radians(a[0])))
 
 
-def _world(seed, scramble):
-    rng = random.Random(seed)
-    centres = [(-0.78 + rng.uniform(-0.12, 0.12), 35.34 + rng.uniform(-0.12, 0.12)) for _ in range(10)]
-    farms = [(c[0] + rng.gauss(0, 0.01), c[1] + rng.gauss(0, 0.01)) for c in centres for _ in range(10)]
-    near = [[j for j in range(100) if j != i and _km(farms[i], farms[j]) <= NEIGHBOUR_KM] for i in range(100)]
-    weeks = 60 // 7 + 1
-    weather = [[rng.random() for _ in range(10)] for _ in range(weeks)]          # true FAW risk, per cluster per week
-    observed = [[min(1, max(0, w + rng.uniform(-0.2, 0.2))) for w in row] for row in weather]
-    onset = {}          # (farm, kind) -> day the problem starts
-    mln = set()
-    for f in rng.sample(range(100), 2):
-        onset[(f, 'mln')] = rng.randrange(0, 20); mln.add(f)
-    for day in range(60):
-        infected = {f for f in mln if onset[(f, 'mln')] <= day}
-        for f in range(100):
-            w = weather[day // 7][f // 10]
-            if (f, 'faw') not in onset and rng.random() < 0.002 * (1 + 2 * w):
-                onset[(f, 'faw')] = day
-            if f not in mln and rng.random() < 0.0005 + 0.01 * sum(1 for n in near[f] if n in infected):
-                onset[(f, 'mln')] = day; mln.add(f)
-    reports = []        # (day, farm, kind or None for false alarm)
-    for (f, kind), day in onset.items():
-        if rng.random() < 0.4:
-            reports.append((day + rng.randint(1, 5), f, kind))
-    for day in range(60):
-        for f in range(100):
-            if rng.random() < 0.002:
-                reports.append((day, f, None))
-    if scramble:
-        # No-signal test: same number and timing of reports and weather values, attached to random farms/clusters.
-        reports = [(d, rng.randrange(100), k) for d, _, k in reports]
-        observed = [rng.sample(row, len(row)) for row in observed]
-    return farms, near, observed, onset, sorted(reports)
+class World:
+    """One random season: farm layout, weather, problem onsets and farmer reports."""
+
+    def __init__(self, seed, a=Assumptions(), scramble=False):
+        rng = random.Random(seed)
+        self.a = a
+        n, per = a.farms, a.farms_per_cluster
+        clusters = math.ceil(n / per)
+        half = a.area_half_width_deg * math.sqrt(n / 100)   # keep village density constant as farms grow
+        centres = [(a.centre[0] + rng.uniform(-half, half), a.centre[1] + rng.uniform(-half, half)) for _ in range(clusters)]
+        self.cluster = [i // per for i in range(n)]
+        self.farms = [(centres[c][0] + rng.gauss(0, a.cluster_sd_deg), centres[c][1] + rng.gauss(0, a.cluster_sd_deg)) for c in self.cluster]
+        self.near = self._neighbours()
+        weeks = a.days // 7 + 1
+        self.weather = [[rng.random() for _ in range(clusters)] for _ in range(weeks)]
+        observed = [[min(1.0, max(0.0, w + rng.uniform(-a.weather_noise, a.weather_noise))) for w in row] for row in self.weather]
+        self.onset = {}
+        infected = {}
+        for f in rng.sample(range(n), a.mln_first_cases):
+            infected[f] = rng.randrange(0, 20)
+        for day in range(a.days):
+            active = {f for f, d in infected.items() if d <= day}
+            for f in range(n):
+                w = self.weather[day // 7][self.cluster[f]]
+                if (f, 'faw') not in self.onset and rng.random() < a.faw_daily_risk * (1 + a.faw_weather_gain * w):
+                    self.onset[(f, 'faw')] = day
+                if f not in infected:
+                    k = sum(1 for g in self.near[f] if g in active)
+                    if rng.random() < a.mln_background_risk + a.mln_risk_per_infected_neighbour * k:
+                        infected[f] = day
+        for f, d in infected.items():
+            self.onset[(f, 'mln')] = d
+        reports = []   # (day, farm, kind, real)
+        for (f, kind), d in sorted(self.onset.items()):
+            if rng.random() < a.report_chance:
+                reports.append((d + rng.randint(*a.report_delay_days), f, kind, True))
+        for day in range(a.days):
+            for f in range(n):
+                if rng.random() < a.false_reports_per_farm_day:
+                    reports.append((day, f, rng.choice(KINDS), False))
+        if scramble:
+            # Same number, timing and type of reports, and the same weather values, attached to random farms
+            # and villages. The problems themselves do not move.
+            reports = [(d, rng.randrange(n), kind, real) for d, _, kind, real in reports]
+            observed = [rng.sample(row, len(row)) for row in observed]
+        self.observed = observed
+        self.reports = sorted(reports, key=lambda r: (r[0], r[1]))
+
+    def _neighbours(self):
+        cell = self.a.neighbour_km / 111.0
+        grid = {}
+        for i, (lat, lon) in enumerate(self.farms):
+            grid.setdefault((int(lat // cell), int(lon // cell)), []).append(i)
+        near = []
+        for i, (lat, lon) in enumerate(self.farms):
+            gx, gy = int(lat // cell), int(lon // cell)
+            cand = [j for dx in (-1, 0, 1) for dy in (-1, 0, 1) for j in grid.get((gx + dx, gy + dy), ())]
+            near.append([j for j in cand if j != i and _km(self.farms[i], self.farms[j]) <= self.a.neighbour_km])
+        return near
 
 
-def _run(policy, world):
-    farms, near, observed, onset, reports = world
-    last_visit = [-30] * 100
-    open_reports = {}       # farm -> (day reported, kind)
-    known_mln = set()       # farms where MLN was reported or found
-    found = {}
-    r = 0
-    order = list(range(100))
-    cursor = 0
-    for day in range(60):
-        while r < len(reports) and reports[r][0] <= day:
-            d, f, kind = reports[r]; r += 1
-            open_reports.setdefault(f, (d, kind))
-            if kind == 'mln': known_mln.add(f)
-        if day % 7 >= 5:
-            continue
-        if policy == 'rotation':
-            chosen = [order[(cursor + i) % 100] for i in range(4)]; cursor += 4
-        elif policy == 'officer':
-            reported = sorted(open_reports, key=lambda f: open_reports[f][0])
-            rest = sorted((f for f in range(100) if f not in open_reports), key=lambda f: last_visit[f])
-            chosen = (reported + rest)[:4]
+class Officer:
+    """Runs one scheduling rule through a season and records when each problem was first visited."""
+
+    def __init__(self, world, policy, prior=FieldwisePrior()):
+        self.w, self.policy, self.prior = world, policy, prior
+        n = world.a.farms
+        self.last_visit = [-30] * n
+        self.open_reports = {}       # farm -> (day, kind)
+        self.known_mln = set()       # farms with MLN reported or confirmed
+        self.found = {}              # (farm, kind) -> day first visited while present
+        self.order = sorted(range(n), key=lambda f: (world.cluster[f], f))
+        self.cursor = 0
+        self.next_report = 0
+        self.log = {}                # day -> chosen farms
+
+    def score(self, f, day):
+        """Fieldwise priority: chance of an undetected problem since the last visit, plus open reports."""
+        p = self.prior
+        since = day - self.last_visit[f]
+        weather = self.w.observed[day // 7][self.w.cluster[f]]
+        known = sum(1 for g in self.w.near[f] if g in self.known_mln)
+        rate = p.daily_risk * (1 + p.weather_gain * weather) + p.daily_risk * p.neighbour_gain * known
+        return 1 - math.exp(-rate * since) + (p.report_weight if f in self.open_reports else 0)
+
+    def step(self, day):
+        a, w = self.w.a, self.w
+        while self.next_report < len(w.reports) and w.reports[self.next_report][0] <= day:
+            d, f, kind, _ = w.reports[self.next_report]
+            self.next_report += 1
+            if (f, kind) not in self.found:
+                self.open_reports.setdefault(f, (d, kind))
+                if kind == 'mln':
+                    self.known_mln.add(f)
+        if day % 7 >= a.working_days_per_week:
+            return []
+        k = a.visits_per_day
+        if self.policy == 'rotation':
+            chosen = [self.order[(self.cursor + i) % a.farms] for i in range(k)]
+            self.cursor += k
+        elif self.policy == 'officer':
+            reported = sorted(self.open_reports, key=lambda f: self.open_reports[f][0])
+            rest = sorted((f for f in range(a.farms) if f not in self.open_reports), key=lambda f: (self.last_visit[f], f))
+            chosen = (reported + rest)[:k]
         else:
-            def score(f):
-                since = day - last_visit[f]
-                w = observed[day // 7][f // 10]
-                h = 0.002 * (1 + 2 * w) + 0.0005 + 0.01 * sum(1 for n in near[f] if n in known_mln)
-                p = 1 - math.exp(-h * since)
-                return p + (0.6 if f in open_reports else 0)
-            chosen = sorted(range(100), key=lambda f: -score(f))[:4]
+            chosen = sorted(range(a.farms), key=lambda f: (-self.score(f, day), f))[:k]
         for f in chosen:
-            last_visit[f] = day
-            open_reports.pop(f, None)
-            for kind in ('faw', 'mln'):
-                start = onset.get((f, kind))
-                if start is not None and start <= day and (f, kind) not in found:
-                    found[(f, kind)] = day
-                    if kind == 'mln': known_mln.add(f)
-    eligible = [k for k, d in onset.items() if d <= 60 - 7]
-    reached = [k for k in eligible if k in found and found[k] - onset[k] <= 7]
-    by_kind = {kind: ([k for k in eligible if k[1] == kind], [k for k in reached if k[1] == kind]) for kind in ('faw', 'mln')}
-    return len(eligible), len(reached), {k: (len(e), len(r_)) for k, (e, r_) in by_kind.items()}
+            self.last_visit[f] = day
+            self.open_reports.pop(f, None)
+            for kind in KINDS:
+                start = w.onset.get((f, kind))
+                if start is not None and start <= day and (f, kind) not in self.found:
+                    self.found[(f, kind)] = day
+                    if kind == 'mln':
+                        self.known_mln.add(f)
+        self.log[day] = chosen
+        return chosen
+
+    def run(self, until=None):
+        for day in range(self.w.a.days if until is None else until):
+            self.step(day)
+        return self
+
+    def reach(self):
+        a = self.w.a
+        eligible = [key for key, d in self.w.onset.items() if d <= a.days - 1 - a.reach_window_days]
+        hit = {key for key in eligible if key in self.found and self.found[key] - self.w.onset[key] <= a.reach_window_days}
+        by_kind = {kind: (sum(1 for key in eligible if key[1] == kind), sum(1 for key in hit if key[1] == kind)) for kind in KINDS}
+        return len(eligible), len(hit), by_kind
 
 
-POLICIES = {'rotation': 'Basic rotation: visit every farm in turn',
-            'officer': 'Experienced officer: reported farms first, then whoever has waited longest',
-            'fieldwise': 'Fieldwise: rank by reports, weather risk and nearby MLN'}
+def _summary(values):
+    v = sorted(values)
+    q = lambda p: v[min(len(v) - 1, int(p * len(v)))]
+    return {'mean': round(100 * sum(v) / len(v), 1), 'p5': round(100 * q(.05), 1), 'p95': round(100 * q(.95), 1)}
 
 
-def _pct(values, q):
-    v = sorted(values); return round(100 * v[min(len(v) - 1, int(q * len(v)))], 1)
-
-
-@lru_cache(maxsize=4)
-def simulate(scramble=False, runs=200):
-    totals = {p: [] for p in POLICIES}
-    kinds = {p: {'faw': [0, 0], 'mln': [0, 0]} for p in POLICIES}
-    wins = {'vs_rotation': 0, 'vs_officer': 0}
-    for seed in range(runs):
-        world = _world(seed, scramble)
-        rates = {}
+def compare(runs=200, a=Assumptions(), prior=FieldwisePrior(), scramble=False, first_seed=0):
+    """Paired comparison of all scheduling rules over `runs` seasons."""
+    rates = {p: [] for p in POLICIES}
+    kinds = {p: {k: [0, 0] for k in KINDS} for p in POLICIES}
+    problems = []
+    for seed in range(first_seed, first_seed + runs):
+        world = World(seed, a, scramble)
         for p in POLICIES:
-            n, hit, k = _run(p, world)
-            rates[p] = hit / n if n else 0
-            totals[p].append(rates[p])
-            for kind, (e, r) in k.items():
-                kinds[p][kind][0] += e; kinds[p][kind][1] += r
-        wins['vs_rotation'] += rates['fieldwise'] > rates['rotation']
-        wins['vs_officer'] += rates['fieldwise'] > rates['officer']
-    return {'simulated': True, 'signal': 'scrambled' if scramble else 'real', 'runs': runs, 'assumptions': ASSUMPTIONS,
-            'policies': {p: {'label': POLICIES[p], 'reach_mean': round(100 * sum(v) / len(v), 1),
-                             'reach_p5': _pct(v, .05), 'reach_p95': _pct(v, .95),
-                             'faw_reach': round(100 * kinds[p]['faw'][1] / max(1, kinds[p]['faw'][0]), 1),
-                             'mln_reach': round(100 * kinds[p]['mln'][1] / max(1, kinds[p]['mln'][0]), 1)} for p, v in totals.items()},
-            'fieldwise_beats_rotation_runs': wins['vs_rotation'], 'fieldwise_beats_officer_runs': wins['vs_officer']}
+            n, hit, by_kind = Officer(world, p, prior).run().reach()
+            rates[p].append(hit / n if n else 0.0)
+            for k, (e, h) in by_kind.items():
+                kinds[p][k][0] += e
+                kinds[p][k][1] += h
+        problems.append(n)
+    diff = lambda x, y: [i - j for i, j in zip(rates[x], rates[y])]
+    return {
+        'runs': runs, 'signal': 'scrambled' if scramble else 'real',
+        'problems_per_run': round(sum(problems) / len(problems), 1),
+        'policies': {p: dict(_summary(rates[p]), label=POLICIES[p],
+                             **{f'{k}_reach': round(100 * kinds[p][k][1] / max(1, kinds[p][k][0]), 1) for k in KINDS})
+                     for p in POLICIES},
+        'fieldwise_minus_rotation': dict(_summary(diff('fieldwise', 'rotation')), wins=sum(d > 0 for d in diff('fieldwise', 'rotation'))),
+        'fieldwise_minus_officer': dict(_summary(diff('fieldwise', 'officer')), wins=sum(d > 0 for d in diff('fieldwise', 'officer'))),
+    }
+
+
+def describe():
+    return {'assumptions': asdict(Assumptions()), 'fieldwise_prior': asdict(FieldwisePrior()), 'policies': POLICIES}
