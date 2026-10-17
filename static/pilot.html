@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Fieldwise · Pilot plan</title><meta name="theme-color" content="#173c32"><link rel="manifest" href="/static/manifest.webmanifest"><link rel="icon" href="/static/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/static/style.css"><link rel="stylesheet" href="/static/impact.css"><link rel="stylesheet" href="/static/theme.css"><link rel="stylesheet" href="/static/a11y.css"><script defer src="/static/offline.js"></script>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Fieldwise · Pilot plan</title><meta name="theme-color" content="#173c32"><link rel="manifest" href="/static/manifest.webmanifest"><link rel="icon" href="/static/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/static/style.css"><link rel="stylesheet" href="/static/impact.css"><link rel="stylesheet" href="/static/theme.css"><link rel="stylesheet" href="/static/sidebar.css"><link rel="stylesheet" href="/static/icons.css"><link rel="stylesheet" href="/static/a11y.css"><script defer src="/static/offline.js"></script>
 <style>
 .plan-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
 .phase{padding:20px}
@@ -44,10 +44,10 @@
     <label>Server per month (US$)<input type="number" id="server" value="15" min="0"><small>Assumption: one small cloud server.</small></label>
     <label>Season length (months)<input type="number" id="months" value="3" min="1"></label>
     <label>Maize price (US$ per kg)<input type="number" id="price" value="0.30" min="0.01" step="0.01"><small>Assumption. Replace with the local market price.</small></label>
-    <p id="calc-note" class="hint" style="grid-column:1/-1">Change any number; the totals update. Weather and soil data come from free open sources (Open-Meteo, ISRIC SoilGrids, OpenStreetMap). Check Open-Meteo’s licence terms for a funded pilot.</p>
+    <p id="calc-note" class="hint" style="grid-column:1/-1">Change any number; the totals update. These are running costs only. Staff time, officer training, phones and transport are not included and a pilot budget must add them. Weather and soil data come from free open sources (Open-Meteo, ISRIC SoilGrids, OpenStreetMap). Check Open-Meteo’s licence terms for a funded pilot.</p>
   </form>
   <div class="calc-out" aria-live="polite">
-    <div><strong id="per-farm">—</strong><br><span>cost per farm for the season</span></div>
+    <div><strong id="per-farm">—</strong><br><span>running cost per farm for the season: USSD sessions and server only</span></div>
     <div><strong id="total">—</strong><br><span>total running cost for the season</span></div>
     <div><strong id="breakeven">—</strong><br><span>of maize each farm must keep from loss to cover its cost</span></div>
   </div>
@@ -55,7 +55,7 @@
 
 <div class="section-heading" id="measure"><div><span class="eyebrow">MEASURE</span><h2>What the pilot measures, and where it is already counted</h2></div></div>
 <section class="card" style="padding:8px 18px"><div class="table-scroll" tabindex="0" role="region" aria-label="Pilot measures"><table class="reference-table measure"><thead><tr><th scope="col">Question</th><th scope="col">Measure</th><th scope="col">Already in Fieldwise</th></tr></thead><tbody>
-<tr><td>Do ranked visits find more problems?</td><td>Share of visits with a confirmed problem, ranked vs routine farms</td><td>Visit outcomes and “Visits that were evidence-targeted”</td></tr>
+<tr><td>Do ranked visits find more problems?</td><td>Share of visits with a confirmed problem, ranked vs routine farms</td><td>“Visits that confirmed a problem” and “Visits to flagged farms”</td></tr>
 <tr><td>Do problems get seen sooner?</td><td>Hours from a farmer’s report to the visit</td><td>“Median report-to-visit time”</td></tr>
 <tr><td>Will farmers answer?</td><td>Survey response rate; declines</td><td>“Survey response rate”</td></tr>
 <tr><td>Is the model learning?</td><td>Confirmed-problem rate per signal over the season</td><td>“What Felix’s visits have taught the model”</td></tr>

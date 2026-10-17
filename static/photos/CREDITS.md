@@ -12,7 +12,8 @@ Every photo here is public domain or CC0, so no permission or attribution is req
 | crop-groundnuts.jpg | Peanut plants | Alabama Extension | CC0 | https://www.flickr.com/photos/184594136@N08/52303500397 |
 | crop-tobacco.jpg | Thriving North Carolina tobacco field | Carol M. Highsmith | CC0 | https://www.rawpixel.com/image/434001/free-photo-image-tobacco-farm |
 | crop-vegetables.jpg | Mature tomato plants in Dutch buckets | Alabama Extension | CC0 | https://www.flickr.com/photos/184594136@N08/51859296315 |
+| sidebar-maize-road.jpg | A view of a maize field and road in summer, Nepal (sidebar artwork on every page) | Bhuwan Bdr. Rokaha | CC0 | https://wordpress.org/photos/photo/4526575461/ |
 
 The photos show places outside the demo farms (Mozambique, the USA, Nepal). They illustrate the crops and landscapes; they are not pictures of the fictional Fieldwise farms.
 
-Icons: [Lucide](https://lucide.dev) v0.469.0, ISC licence. See `static/icons/LICENSE.txt`.
+Icons: most icons in `static/icons/` are from [Health Icons](https://healthicons.org) (filled style), released into the public domain under CC0 by Resolve to Save Lives; each file names its source icon in a comment. The arrows (`arrow-left`, `arrow-right`, `arrow-up-right`) and the brand mark (`waves`) are [Lucide](https://lucide.dev) v0.469.0, ISC licence. See `static/icons/LICENSE.txt`.
