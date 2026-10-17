@@ -1,120 +1,138 @@
 # Fieldwise
 
-Fieldwise helps a field officer decide which farm to visit first, and shows why. It combines:
-- public weather, soil and map data;
-- short USSD check-ins that farmers answer on a basic phone;
-- what the officer finds on each visit.
+[![Tests](https://github.com/Kea-nhlapo/fieldwise/actions/workflows/tests.yml/badge.svg)](https://github.com/Kea-nhlapo/fieldwise/actions/workflows/tests.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)
 
-It runs offline in the field and syncs when the signal returns.
+An offline-first field app that tells an agricultural extension officer which farm to visit first, and shows why.
 
-Hackathon prototype: the farms are fictional, and nothing has been validated on real farms yet.
+![Fieldwise demo: ranked farms, a farmer's USSD check-in, the farm moving from rank 4 to rank 1, the model learning from the visit, impact metrics and the simulation](docs/media/demo.gif)
 
-## Three settings, three roles
+In 2021/22, Malawi had one extension worker for every 2,017 farmers, against a government target of 1,000 ([Ministry of Agriculture, *Agriculture Sector Performance Report 2021–22*, p. 19](https://docs.dcafs-tipdep-donors-mw.org/dt_docs/DOC20230126080437.pdf)). An officer can make a handful of visits a day. Fieldwise ranks farms using:
+- live public data;
+- short check-ins that farmers answer on a basic phone;
+- what the officer found on earlier visits.
 
-Each setting demonstrates a different part of the idea. They are not one system validated in one place.
+It keeps working with no signal.
 
-| Setting | What it shows | Open it |
+*Hackathon project: the farms are fictional, and nothing has been validated in the field.*
+
+## What's technically interesting
+
+- **Offline-first with exactly-once sync.** A service worker caches the app. An outbox holds actions taken offline, and idempotency keys stop a retried action being saved twice. → [`static/sw.js`](static/sw.js), [`static/offline.js`](static/offline.js), the `offline_replay` middleware in [`fieldwise/app.py`](fieldwise/app.py)
+- **Sign-out that actually locks a shared device.** Every signed-in request needs an HttpOnly cookie *and* a per-device token, so deleting the token signs the device out at once, even offline.
+  - A "session generation" stops responses that were still downloading during sign-out from being cached or shown.
+  - Sign-out reaches every open tab.
+  - Seven browser scenarios cover the race conditions, including one that fails against the earlier implementation.
+
+  → [`fieldwise/auth.py`](fieldwise/auth.py), [`scripts/signout-check.cjs`](scripts/signout-check.cjs)
+- **Farmer check-ins over USSD.** The menus use [Africa's Talking's](https://africastalking.com) callback format, consent comes first, and the questions branch. Fuzz tests with 300+ malformed inputs never produce an error page. The gateway key is redacted from access logs. → [`fieldwise/ussd.py`](fieldwise/ussd.py)
+- **Asking only where an answer changes the plan.** For each farm, Fieldwise scores both possible answers and surveys the farms whose answer would change today's visits. A Beta–Bernoulli model learns from visit outcomes how often each signal turns out to be real. → [`fieldwise/learning.py`](fieldwise/learning.py)
+- **A simulation built to be falsifiable.** The design and expected results were committed to git before the first comparison ran. It includes an experienced-officer baseline, two no-signal controls, an ablation and a scale test, and it reports where Fieldwise loses. → [`fieldwise/simulation.py`](fieldwise/simulation.py), [`docs/SIMULATION.md`](docs/SIMULATION.md)
+
+| Farm map, drawn offline from OpenStreetMap data | Simulation results page |
+|---|---|
+| ![Farm map with priority-coloured pins](docs/media/farm-map.jpg) | ![Simulation page with verdict and charts](docs/media/simulation.jpg) |
+
+## Results, from simulation
+
+7-day reach is the share of new pest or disease problems that get a visit within a week. Figures are from 200 seeded seasons: 100 farms around Bomet County, Kenya, with 4 visits a day.
+
+| Scheduling rule | 7-day reach | Fall armyworm | Maize lethal necrosis |
+|---|---|---|---|
+| Basic rotation | 23% | 23% | 23% |
+| Experienced officer (chases farmer reports) | 54% | 54% | 54% |
+| **Fieldwise** | **58%** | 54% | **65%** |
+
+- **Against basic rotation:** Fieldwise was ahead in 198 of 200 seasons.
+- **Against the experienced officer, the edge is small:** ahead in 125 seasons, tied in 20, behind in 55. All of it comes from MLN, by following confirmed cases to neighbouring farms.
+- **With every signal scrambled, the advantage disappears.**
+- **At 250 farms per officer, Fieldwise trailed the officer.**
+
+No claim is made about crop losses avoided.
+
+## How it fits together
+
+```mermaid
+flowchart LR
+  subgraph Device["Officer's browser (offline-first)"]
+    UI["Pages + offline.js<br/>outbox, officer token"] --> SW["Service worker<br/>cache, session generation"]
+  end
+  Phone["Farmer's basic phone"] -- USSD --> Gateway["Africa's Talking"]
+  Gateway -- "/ussd (keyed)" --> API
+  SW <--> API["FastAPI<br/>auth, idempotent writes"]
+  API --> DB[("SQLite, WAL")]
+  API --> Models["pyfao56 water model<br/>triage rules + Beta–Bernoulli learning<br/>OR-Tools routing"]
+  API -- "coordinates only" --> Data["Open-Meteo · SoilGrids · OpenStreetMap"]
+```
+
+Python 3.12, FastAPI, SQLite in WAL mode, and plain HTML, CSS and JavaScript, with no build step. Three settings each show one part, and none is one system validated in one place:
+
+| Setting | What it shows | Page |
 |---|---|---|
-| **Kasungu, Malawi** (Tshego's eight scenario farms) | The officer workflow: timestamped evidence → explained priority → USSD survey → visit → learning from the visit outcome | `/felix` |
-| **South Africa** (five fictional maize farms) | The crop water model (pyfao56): how a farmer's "irrigation stopped" reply changes water stress and priority | `/` |
-| **Bomet County, Kenya** (100 simulated farms) | A simulation of 7-day reach: how often new fall armyworm and MLN problems get a visit within a week under three scheduling rules | `/simulation` |
+| Kasungu, Malawi: 8 scenario farms | The officer workflow: timestamped evidence → explained priority → USSD survey → visit → learning | `/felix` |
+| South Africa: 5 fictional maize farms | The crop water model and a farmer's "irrigation stopped" reply | `/` |
+| Bomet County, Kenya: 100 simulated farms | The 7-day-reach simulation | `/simulation` |
 
 ## Run it
 
-Double-click **START-FIELDWISE.cmd** and open **http://127.0.0.1:8765**. Keep the window open; Ctrl+C stops it.
+```bash
+python -m venv .venv
+.venv/Scripts/python.exe -m pip install -r requirements.txt   # Windows; use .venv/bin/python elsewhere
+```
 
-- **Officer PIN:** the launcher sets a demo PIN of **2468** and prints it. Set `FIELDWISE_OFFICER_PIN` yourself for anything beyond a demo.
-- **USSD phone simulator:** `/ussd-simulator`. Sign in on another page first, because the simulator needs an officer session.
-- **Docker:**
-  ```bash
-  docker build -t fieldwise .
-  docker run -p 8765:8765 -v fieldwise-data:/app/data -e FIELDWISE_OFFICER_PIN=<pin> fieldwise
-  ```
-- **Setup on a new computer** (Python 3.12):
-  ```bash
-  python -m venv .venv
-  .venv/Scripts/python.exe -m pip install -r requirements.txt
-  ```
+Then double-click **START-FIELDWISE.cmd** (or run `start.ps1`) and open http://127.0.0.1:8765. The launcher sets a demo officer PIN, **2468**, and prints it. A walkthrough with expected numbers is in [docs/DEMO-SCRIPT.md](docs/DEMO-SCRIPT.md).
 
-The 6-minute pitch, with clicks and expected numbers, is in [DEMO-SCRIPT.md](DEMO-SCRIPT.md).
+With Docker:
 
-## What works
+```bash
+docker build -t fieldwise .
+docker run -p 8765:8765 -v fieldwise-data:/app/data -e FIELDWISE_OFFICER_PIN=<pin> fieldwise
+```
 
-| Area | Status |
-|---|---|
-| Live public data | Open-Meteo weather, ISRIC SoilGrids soil and OpenStreetMap requests, each saved with a timestamped receipt. Failures are shown, not hidden. |
-| Explained priority | Every score breaks down into environment, farmer report, officer correction and learned points. The officer can override it. |
-| Survey targeting | For each farm, Fieldwise scores both possible answers and asks the farmers whose answer would change the day's visits. |
-| USSD check-in | `/ussd` answers in Africa's Talking's callback format (`CON`/`END`), with consent first and branching questions. It is fuzz-tested so bad farmer input never produces an error page. The provider callback only accepts requests carrying `FIELDWISE_USSD_KEY`, sent in an `X-Fieldwise-Ussd-Key` header or, for providers that can only call a URL, as `?key=`. That value is redacted from Uvicorn's access log. The in-app phone simulator uses an officer-only route. Telecom delivery is **not** provisioned. |
-| Learning from visits | One-tap visit outcomes update a Beta–Bernoulli estimate of how often each signal turns out to be a real problem. |
-| Offline-first | A service worker caches the app. An outbox holds offline actions and syncs each one exactly once. |
-| Officer access | A PIN guards every change and every read of farmer records. Each signed-in request needs both an HttpOnly cookie and a per-device officer token. **Sign out** works offline and from any page: it deletes the token, cached farm records and unsynced actions, ignores responses that were still on their way, and signs out every open tab. Sessions last 12 hours, and five wrong PINs lock sign-in for 5 minutes. |
-| Impact metrics | `/impact`, split into measured outcomes, activity and labelled model estimates. Each metric has a definition, and the de-identified event log is downloadable. |
-| Simulation | `/simulation`: 200 seeded seasons, with an experienced-officer comparison, no-signal controls, ablation, weight sensitivity and a scale test. See [SIMULATION.md](SIMULATION.md). |
-| Water model | pyfao56 water balance for the South Africa farms. See [MODEL.md](MODEL.md). |
-| Accessibility | axe-core finds 0 WCAG 2.1 AA violations on every page at desktop and mobile sizes. |
+## Tests
 
-## What the simulation does and doesn't show
+```bash
+.venv/Scripts/python.exe -m unittest discover -s tests        # 96 tests
+.venv/Scripts/python.exe scripts/serve-test.py --port 8769 --pin 2468   # disposable server for browser checks
+node scripts/signout-check.cjs http://127.0.0.1:8769          # 7 sign-out and race scenarios
+node scripts/pin-check.cjs http://127.0.0.1:8769              # sign-in, receipts, outbox after sign-in
+node scripts/offline-a11y-check.cjs http://127.0.0.1:<open-server-port>   # offline install, sync, axe-core WCAG 2.1 AA
+node scripts/record-demo.cjs http://127.0.0.1:<open-server-port>          # plays the whole demo
+```
 
-In simulation, Fieldwise reached 58% of new problems within 7 days. Basic rotation reached 23%, and an experienced officer who chases farmer reports reached 54%.
+The browser checks use Playwright with Microsoft Edge. The unit tests run on every push (see the badge).
 
-- **Its edge over that officer is small and inconsistent:** ahead in 125 of 200 seasons, tied in 20, behind in 55.
-- **The edge comes from MLN.** Fieldwise follows MLN to neighbouring farms.
-- **It disappears when every signal is scrambled.**
-- **The comparison was designed in advance.** Its design and expected results were committed to git before the first comparison ran.
+## Design decisions
 
-We make no claim about crop losses avoided.
+- **Two credentials instead of one.** A cookie alone can't be revoked by a device that's offline. Pairing it with a token the device holds means signing out takes effect locally at once, and it blocks cross-site request forgery too.
+- **SQLite in WAL mode.** With the default journal, a demo reset could fail with "database is locked" while a dashboard read was open. A regression test reproduces that failure without WAL.
+- **No phone numbers stored.** USSD answers are tied to a farm number. Recognising callers by phone would remove a step but keep data derived from phone numbers; a farm code on each farmer's card is the proposed middle ground.
+- **Impact numbers say what kind of number they are.** `/impact` separates measured outcomes, activity and labelled model estimates. Its event log holds no personal data, so counts survive a farmer's erasure request.
 
 ## Before a real pilot
 
-These are known gaps, not oversights:
+- **USSD delivery:** provision a code with a provider and set `FIELDWISE_USSD_KEY`. Without it, the callback is off.
+- **Tying a caller to a farm:** prove which farm a caller answers for, with a farm code on each farmer's card.
+- **Offline data at rest:** encrypt cached records. Today they're deleted on sign-out but not encrypted.
+- **Accounts:** per-officer accounts and an audit trail, instead of one shared PIN.
+- **Validation:** test the thresholds and simulation rates in the field.
+- **Data protection:** a compliance assessment under Malawi's Data Protection Act 2024 and South Africa's POPIA.
 
-- **USSD delivery.** Register `/ussd` with a USSD code from a provider, and set `FIELDWISE_USSD_KEY`. Without that key the callback is switched off. If a reverse proxy sits in front of the server, configure it not to log the `key` query parameter, or have the gateway send the header instead.
-- **Tying a caller to a farm.** Anyone who knows a farm number can answer for it. The proposed fix is a short farm code printed on each farmer's card: it avoids storing phone numbers, at the cost of one extra step. See the pilot plan (`/pilot`).
-- **Offline data at rest.** Cached records are deleted on sign-out, but they are not encrypted while signed in.
-- **Accounts.** There is one shared officer PIN, with no per-officer accounts or audit trail of who changed what.
-- **Validation.** Thresholds and simulation rates are plausible assumptions. A pilot has to measure them.
-- **Legal.** Data protection duties under Malawi's Data Protection Act 2024 (MACRA), and under POPIA in South Africa, need a compliance assessment.
+## Project structure
 
-## Privacy choices
-
-- Weather, soil and map providers receive only coordinates or a map area. They never receive a farmer's name or answers.
-- Farmers agree before any question, and saying no saves nothing.
-- Fieldwise never stores phone numbers.
-- A farm's reports can be exported or deleted. Impact counts contain no personal data, so they survive deletion.
-
-## Checks
-
-```bash
-.venv/Scripts/python.exe -m unittest discover -s tests
-node scripts/offline-a11y-check.cjs http://127.0.0.1:<port>
-node scripts/pin-check.cjs http://127.0.0.1:<port>
-node scripts/record-demo.cjs http://127.0.0.1:<port>
-.venv/Scripts/python.exe scripts/run_simulation.py
+```
+fieldwise/   FastAPI app: auth, USSD, triage and learning, simulation, impact metrics, storage
+static/      Pages, offline layer (offline.js, sw.js), styles, icons, photos, bundled Kasungu data
+tests/       Unit and API tests
+scripts/     Browser checks, simulation runner, demo recorder, test server
+docs/        Simulation, water model, offline and impact, evidence flow, design notes, demo script
 ```
 
-What each one does:
-- **Unit tests:** 90+ tests.
-- **`offline-a11y-check.cjs`:** offline install, outbox sync and accessibility.
-- **`pin-check.cjs`:** the sign-in flow. Run it against a server started with a PIN.
-- **`signout-check.cjs`:** six sign-out scenarios: API sign-out, offline button sign-out, reconnecting, a response still in flight, reopening via the phone simulator, and a second tab. Run it against a server started with a PIN.
-- **`record-demo.cjs`:** plays the whole stage demo and saves screenshots.
-- **`run_simulation.py`:** reproduces the simulation results (seeded, about a minute).
+## Licence and credits
 
-Run the browser scripts against a throwaway server, not the live demo: they reset demo data.
-
-## More detail
-
-- [EVIDENCE-FLOW.md](EVIDENCE-FLOW.md): evidence receipts and the privacy design in the Kasungu workflow.
-- [TSHEGO-INTEGRATION.md](TSHEGO-INTEGRATION.md): how Tshego's Flutter app was adapted.
-- [OFFLINE-AND-IMPACT.md](OFFLINE-AND-IMPACT.md): offline layer and impact metrics.
-- [DISEASE.md](DISEASE.md): disease observations and the UW reference explorer.
-- [DESIGN.md](DESIGN.md): design references.
-- [TRANSLATION.md](TRANSLATION.md): farmer-facing text, ready for a Chichewa translator.
-
-## Sources and licences
-
-- [pyfao56](https://github.com/kthorp/pyfao56), [OR-Tools](https://developers.google.com/optimization).
-- [Open-Meteo](https://open-meteo.com) (check terms before commercial use), [ISRIC SoilGrids](https://soilgrids.org) (CC BY 4.0), map data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright) (ODbL).
-- Photos are public domain or CC0, credited in `static/photos/CREDITS.md`. Icons are Health Icons (CC0) and Lucide (ISC), see `static/icons/LICENSE.txt`.
-- The extension-worker figure (2,017 farmers per worker in 2021/22) is from the Government of Malawi Ministry of Agriculture's *2021–2022 Agriculture Sector Performance Report*, p. 19.
+Code is MIT-licensed (see [LICENSE](LICENSE)). The following keep their own terms:
+- **Photos:** public domain or CC0 ([credits](static/photos/CREDITS.md)).
+- **Icons:** Health Icons (CC0) and Lucide (ISC).
+- **Data:** map data © OpenStreetMap contributors (ODbL), soil data from ISRIC SoilGrids (CC BY 4.0), weather from Open-Meteo.
+- **Libraries:** [pyfao56](https://github.com/kthorp/pyfao56) and [OR-Tools](https://developers.google.com/optimization).

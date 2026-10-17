@@ -11,7 +11,7 @@ const SHELL = [
   '/static/manifest.webmanifest', '/static/icon.svg',
   '/static/photos/crop-groundnuts.jpg', '/static/photos/crop-maize.jpg', '/static/photos/crop-tobacco.jpg', '/static/photos/crop-vegetables.jpg', '/static/photos/hero-impact.jpg', '/static/photos/hero-kasungu.jpg', '/static/photos/hero-pilot.jpg', '/static/photos/hero-sa.jpg', '/static/photos/sidebar-maize-road.jpg',
   '/static/icons/arrow-left.svg', '/static/icons/arrow-right.svg', '/static/icons/arrow-up-right.svg', '/static/icons/bell.svg', '/static/icons/bug.svg', '/static/icons/chart-column.svg', '/static/icons/circle-dashed.svg', '/static/icons/clipboard-check.svg', '/static/icons/coins.svg', '/static/icons/droplets.svg', '/static/icons/flag.svg', '/static/icons/info.svg', '/static/icons/layout-dashboard.svg', '/static/icons/list.svg', '/static/icons/map-pin.svg', '/static/icons/map.svg', '/static/icons/route.svg', '/static/icons/smartphone.svg', '/static/icons/sprout.svg', '/static/icons/trending-up.svg', '/static/icons/triangle-alert.svg', '/static/icons/waves.svg', '/static/icons/wheat.svg',
-  '/static/tshego/farms.json', '/static/tshego/kasungu_map.json', '/static/tshego/kasungu_detail.json', '/static/tshego/kasungu_weather.json',
+  '/static/kasungu/farms.json', '/static/kasungu/kasungu_map.json', '/static/kasungu/kasungu_detail.json', '/static/kasungu/kasungu_weather.json',
 ];
 // Reads that hold no farmer records (mirrors OPEN_READS in fieldwise/auth.py). Everything else under /api/
 // is a farmer record: it is cached only while signed in and deleted when the session ends.

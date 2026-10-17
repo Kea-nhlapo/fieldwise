@@ -105,7 +105,7 @@ function show(text, ended) { $('screen').textContent = text; $('screen').dataset
 function log(line) { const el = $('log'); el.textContent = (el.textContent === 'No requests yet.' ? '' : el.textContent + '\n') + line; el.scrollTop = el.scrollHeight; }
 async function send() {
   const body = new URLSearchParams({sessionId: session, serviceCode, phoneNumber: '+265999000000', networkCode: '65001', text: steps.join('*')});
-  log('POST /ussd  text="' + steps.join('*') + '"');
+  log('POST /api/ussd/simulate  text="' + steps.join('*') + '"');
   try {
     // Through the shared helper: it finishes any pending sign-out first, sends this device's officer token,
     // and asks for the PIN if there is no session.

@@ -45,7 +45,7 @@ function selectFarm(fid) {
 }
 // Map drawing helpers. A street-map look drawn entirely offline: the roads and rivers from
 // the bundled or fetched extract, plus real OpenStreetMap building footprints, river names,
-// route numbers and named places from static/tshego/kasungu_detail.json
+// route numbers and named places from static/kasungu/kasungu_detail.json
 // (built by scripts/build-map-detail.cjs). Farm pins are the fictional scenario locations.
 let mapDetail = null, mapDetailCache = null, mapDragged = false;
 const mapView = {zoom:1, cx:null, cy:null, shown:null};
@@ -73,7 +73,7 @@ function mapLineClass(line) {
 function mapLoadDetail() {
   if (mapDetail !== null) return;
   mapDetail = 'loading';
-  fetch('/static/tshego/kasungu_detail.json')
+  fetch('/static/kasungu/kasungu_detail.json')
     .then(response=>response.ok ? response.json() : Promise.reject(new Error('missing')))
     .then(detail=>{ mapDetail = detail; mapDetailCache = null; if (data && mapData) renderMap(); })
     .catch(()=>{ mapDetail = false; });  // the map still works from the roads and rivers alone
