@@ -153,3 +153,27 @@ class YieldEstimateTests(unittest.TestCase):
             self.assertEqual(metric['numerator'], 1, 'only replies that reveal stopped irrigation count')
             self.assertGreater(metric['value'], 0)
             client.close()
+
+
+class MaizeAtRiskCountingTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.client = TestClient(create_app(Path(self.tmp.name) / 'test.db'))
+
+    def tearDown(self):
+        self.client.close()
+        self.tmp.cleanup()
+
+    def at_risk(self):
+        m = next(m for m in self.client.get('/api/impact').json()['metrics'] if m['id'] == 'maize_at_risk')
+        return m['numerator'], m['value']
+
+    def test_repeat_report_counts_once_and_new_episode_counts_again(self):
+        self.client.post('/api/farms/siyakhula/reply', json={'reply': '2'})
+        first = self.at_risk()
+        self.client.post('/api/farms/siyakhula/reply', json={'reply': '2'})
+        self.client.post('/api/farms/siyakhula/reply', json={'reply': '3'})
+        self.assertEqual(self.at_risk(), first, 'repeat reports must not add the same field again')
+        self.client.post('/api/farms/siyakhula/reply', json={'reply': '1'})
+        self.client.post('/api/farms/siyakhula/reply', json={'reply': '2'})
+        self.assertEqual(self.at_risk()[0], 2, 'a new interruption after irrigation worked again counts')

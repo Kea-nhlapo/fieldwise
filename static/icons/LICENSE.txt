@@ -1,3 +1,7 @@
+Health Icons (https://healthicons.org): public domain, CC0 1.0
+(https://creativecommons.org/publicdomain/zero/1.0/). Used for every icon here except
+arrow-left.svg, arrow-right.svg, arrow-up-right.svg and waves.svg, which are Lucide (licence below).
+
 ISC License
 
 Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2022 as part of Feather (MIT). All other copyright (c) for Lucide are held by Lucide Contributors 2022.

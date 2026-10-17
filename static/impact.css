@@ -37,3 +37,6 @@
 .impact-tile .meter{width:100%;height:8px}
 .trend-chart .bar path{fill:#2f5427}
 @media(max-width:900px){.hero-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.impact-group .group-note{font-family:var(--text);font-size:14px;font-weight:400;color:#4d5a52;margin-left:10px}
+.impact-tile.estimate{background:#fbf7ea;border-style:dashed;border-color:#d6c48a}
+.estimate-badge{align-self:flex-start;font-size:11.5px;font-weight:700;letter-spacing:.1em;color:#5b4a0c;background:#f3e6bf;border-radius:999px;padding:3px 9px}

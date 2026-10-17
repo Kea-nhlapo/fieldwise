@@ -33,15 +33,15 @@
 
 The metrics come from an append-only `impact_events` table. It stores only an event type, the workspace, a number and a timestamp: **no farm ID, name, phone number or survey answer**. So the counts survive a farmer's erasure request, which matches the POPIA approach.
 
-| Group | Metric |
-|---|---|
-| Farmer voice | Signals collected · survey response rate · % of answers that changed a priority · average priority movement |
-| Officer action | Median report-to-visit hours · % of visits that were evidence-targeted · officer reviews of the score |
-| Trust | Live-data retrieval success · offline submissions synced and their median delay · erasure requests honoured |
+| Group | What it means | Metrics |
+|---|---|---|
+| Measured outcomes | What Felix found, and how fast | Median report-to-visit hours · % of visits with an outcome that confirmed a problem |
+| Activity | What people and the system did | Signals collected · survey response rate · % of answers that changed a priority · average priority movement · % of visits to flagged farms · officer reviews · live-data success · offline submissions synced and their delay · erasure requests honoured |
+| Model estimates | Calculated, never measured | Maize at risk (FAO-33), counted once per irrigation interruption |
 
 Each tile shows its numerator and denominator and how it is calculated. The page also shows a daily trend and the 25 most recent timestamped events, and the full log is downloadable from **Export event log (CSV)** (`/api/impact/export.csv`).
 
-Counting starts from the first event after this update. Nothing is back-filled or estimated, and a metric with no data shows "No data yet" rather than 0%.
+Counting starts from the first event after the latest demo reset. Nothing is back-filled, estimates are labelled as estimates, and a metric with no data shows "No data yet" rather than 0%.
 
 ## Verification
 

@@ -1,7 +1,8 @@
 # Fieldwise server image.
 # Built and smoke-tested 2026-10-17: all pages, APIs and the USSD flow returned 200 inside the container.
 # Build: docker build -t fieldwise .
-# Run:   docker run -p 8765:8765 -v fieldwise-data:/app/data fieldwise
+# Run:   docker run -p 8765:8765 -v fieldwise-data:/app/data -e FIELDWISE_OFFICER_PIN=<choose one> fieldwise
+# Without FIELDWISE_OFFICER_PIN the app runs open and logs a warning.
 FROM python:3.12-slim
 
 WORKDIR /app

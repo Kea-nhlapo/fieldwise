@@ -68,5 +68,35 @@ class UssdTests(unittest.TestCase):
         self.assertIn('Africa’s Talking', self.client.get('/ussd-simulator').text)
 
 
+
+class UssdFuzzTests(unittest.TestCase):
+    """The gateway shows whatever /ussd returns, so it must always be a CON or END screen."""
+
+    def test_malformed_input_never_errors(self):
+        import random
+        rng = random.Random(42)
+        with tempfile.TemporaryDirectory() as tmp:
+            client = TestClient(create_app(Path(tmp) / 'test.db'), raise_server_exceptions=False)
+            samples = ['14*1*1*1*1*1', '14*1*2*1*1', '14*1*1*2*2*2', '14*1' + '*1' * 50, '1' * 500, '*' * 30, '14**', '14*1*', '14*1*abc',
+                       '14*1*-1', '14*1*4', '٣*١', '14*1*1\n*2', '%00', 'F014*1*1*1', '0014*1*2', '99999999999999999999*1']
+            alphabet = '0123456789**#x '
+            samples += [''.join(rng.choice(alphabet) for _ in range(rng.randint(1, 40))) for _ in range(300)]
+            for text in samples:
+                body = urlencode({'sessionId': 'f', 'serviceCode': '*384#', 'phoneNumber': PHONE, 'text': text})
+                r = client.post('/ussd', content=body, headers={'Content-Type': 'application/x-www-form-urlencoded'})
+                self.assertEqual(r.status_code, 200, text)
+                self.assertTrue(r.text.startswith(('CON ', 'END ')), (text, r.text))
+                self.assertLessEqual(len(r.text), 182, text)
+            client.close()
+
+    def test_answers_past_the_branch_end_are_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            client = TestClient(create_app(Path(tmp) / 'test.db'))
+            body = urlencode({'sessionId': 'f', 'serviceCode': '*384#', 'phoneNumber': PHONE, 'text': '14*1*1*1*1*1'})
+            r = client.post('/ussd', content=body, headers={'Content-Type': 'application/x-www-form-urlencoded'})
+            self.assertTrue(r.text.startswith('END Too many answers'))
+            client.close()
+
+
 if __name__ == '__main__':
     unittest.main()

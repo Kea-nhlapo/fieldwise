@@ -1,0 +1,20 @@
+/* Sidebar artwork: a CC0 maize-field photo behind the bottom block only, so navigation
+   links always sit on solid forest green. Replaces the contour lines from theme.css.
+   Credit in static/photos/CREDITS.md. */
+.sidebar{background:var(--forest)}
+/* Navigation paints above the artwork, which starts a little above the bottom block. */
+.sidebar nav{position:relative;z-index:1}
+.sidebar-bottom{position:relative;isolation:isolate}
+.sidebar-bottom::before{
+  content:"";position:absolute;z-index:-1;left:-24px;right:-24px;top:-72px;bottom:-38px;
+  /* At least 72% forest over the photo: over its brightest pixel, white text stays near 8:1 and the light credit text above 4.5:1. */
+  background:
+    linear-gradient(180deg,var(--forest) 0%,rgba(18,51,41,.78) 32%,rgba(14,42,33,.72) 60%,rgba(10,30,23,.9) 100%),
+    url(/static/photos/sidebar-maize-road.jpg) 50% 70%/cover no-repeat;
+}
+.sidebar-bottom>small,.officer strong,.officer small{text-shadow:0 1px 3px rgba(5,18,13,.9)}
+.officer{border-top-color:rgba(212,240,122,.28)}
+@media(max-width:1200px){.sidebar-bottom::before{left:-18px;right:-18px;bottom:-32px}}
+/* Icon-only rail: the photo would be a thin sliver, so keep it plain. */
+@media(max-width:900px){.sidebar-bottom::before{display:none}}
+@media(forced-colors:active){.sidebar,.sidebar-bottom::before{background:Canvas}}

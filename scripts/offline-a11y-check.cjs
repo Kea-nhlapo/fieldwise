@@ -61,7 +61,7 @@ const AXE = 'https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.10.2/axe.min.js';
     report.axe = {};
     for (const [label, viewport] of [['desktop',{width:1440,height:1000}],['mobile',{width:390,height:844}]]) {
       await page.setViewportSize(viewport);
-      for (const path of ['/', '/felix', '/impact', '/pilot', '/ussd-simulator']) {
+      for (const path of ['/', '/felix', '/impact', '/pilot', '/ussd-simulator', '/simulation']) {
         await page.goto(BASE + path);
         await page.waitForLoadState('networkidle');
         await page.waitForTimeout(900);  // let entrance animations finish before contrast checks

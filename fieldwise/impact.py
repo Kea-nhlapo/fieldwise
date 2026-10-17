@@ -1,8 +1,11 @@
 """Impact metrics computed from the de-identified impact_events log.
 
 Every metric carries its numerator, denominator and definition so a judge can
-audit how it was counted. Nothing here is estimated or back-filled: counts start
-at the first recorded event.
+audit how it was counted, and a group that says what kind of number it is:
+  outcome  - measured: what Felix found and how fast;
+  activity - what the system and people did;
+  estimate - a model estimate, never a measurement.
+Nothing is back-filled: counts start at the first event after the latest demo reset.
 """
 from collections import Counter
 from datetime import datetime, timezone
@@ -11,9 +14,9 @@ from statistics import median
 WORKSPACES = {'sa': 'South Africa maize', 'kasungu': 'Kasungu (Tshego)'}
 
 
-def _metric(id, label, value, unit, definition, numerator=None, denominator=None):
+def _metric(id, label, value, unit, definition, numerator=None, denominator=None, group='activity'):
     return {'id': id, 'label': label, 'value': value, 'unit': unit, 'definition': definition,
-            'numerator': numerator, 'denominator': denominator}
+            'numerator': numerator, 'denominator': denominator, 'group': group}
 
 
 def _rate(numerator, denominator):
@@ -35,10 +38,12 @@ def summarize(events):
     syncs = [e['value'] for e in events if e['kind'] == 'offline_sync']
     at_risk = [e['value'] for e in events if e['kind'] == 'maize_at_risk']
     changed = sum(1 for v in shifts if v)
+    outcomes = [e for e in events if e['kind'] == 'visit_outcome']
+    confirmed = sum(1 for e in outcomes if e['detail'] == 'confirmed')
 
     metrics = [
         _metric('farmer_signals', 'Farmer signals collected', len(signals), 'signals',
-                'Simulated SMS replies, USSD-style check-ins and disease observations saved, across both workspaces.'),
+                'SMS replies, USSD check-ins and disease observations saved, across both workspaces (simulated in this demo).'),
         _metric('survey_response', 'Survey response rate', _rate(kinds['survey_answered'], kinds['survey_queued']), '%',
                 'Answered survey invitations ÷ queued invitations (Kasungu). Declining is never penalised.',
                 kinds['survey_answered'], kinds['survey_queued']),
@@ -48,13 +53,16 @@ def summarize(events):
         _metric('mean_shift', 'Average priority movement', round(sum(abs(v) for v in shifts) / len(shifts), 1) if shifts else None, 'points',
                 'Mean absolute change in triage points caused by one farmer answer.'),
         _metric('maize_at_risk', 'Maize at risk found by farmer answers', round(sum(at_risk)) if at_risk else None, 'kg',
-                'Estimated maize loss (FAO-33 yield response) on fields where a farmer’s SMS revealed irrigation had stopped. A model estimate for fictional 1 ha fields, not a measured harvest.',
-                len(at_risk), None),
+                'Model estimate (FAO-33 yield response) of maize at risk on fields where a farmer’s SMS revealed irrigation had stopped. Counted once per interruption. Fictional 1 ha fields; not a measured harvest or a loss avoided.',
+                len(at_risk), None, group='estimate'),
         _metric('time_to_action', 'Median report-to-visit time', round(median(response_hours), 1) if response_hours else None, 'hours',
                 'Hours from a farmer reporting a concern to Felix recording the visit that closed it.',
-                len(response_hours), len(visits)),
-        _metric('targeted_visits', 'Visits that were evidence-targeted', _rate(targeted, len(visits)), '%',
-                'Visits to farms in “Watch” or “Visit today” status at the moment of the visit ÷ all recorded visits.',
+                len(response_hours), len(visits), group='outcome'),
+        _metric('confirmed_visits', 'Visits that confirmed a problem', _rate(confirmed, len(outcomes)), '%',
+                'Visits where Felix tapped wilting, standing water or pests ÷ visits where he tapped an outcome. Advice-only visits are not counted.',
+                confirmed, len(outcomes), group='outcome'),
+        _metric('targeted_visits', 'Visits to flagged farms', _rate(targeted, len(visits)), '%',
+                'Visits to farms in “Watch”, “Visit today” or “Call today” status at the moment of the visit ÷ all recorded visits. A flag is not a confirmed problem.',
                 targeted, len(visits)),
         _metric('officer_overrides', 'Officer reviews of the score', kinds['officer_override'], 'reviews',
                 'Times Felix corrected or confirmed a recommendation. Felix can always override the score.'),
