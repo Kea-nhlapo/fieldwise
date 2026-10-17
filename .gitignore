@@ -6,3 +6,6 @@ artifacts/
 *.log
 .env
 .env.*
+
+# Third-party source kept locally only, never published
+integrations/

@@ -1,6 +1,5 @@
-"""Browser adaptation of Tshego's Felix workflow. See TSHEGO-INTEGRATION.md.
+"""Kasungu officer workflow: timestamped evidence, explained triage, farmer check-ins and visits.
 
-Rules and farm data originate in the supplied Flutter felix_app.dart.
 Kasungu scenario scores are illustrative and never enter the maize model.
 """
 import json
@@ -101,14 +100,14 @@ def assess(farm, weather, soil=None, learned=None):
 
 
 def register_felix(app, store, root):
-    assets = root / 'static' / 'tshego'
+    assets = root / 'static' / 'kasungu'
     snapshot = json.loads((assets / 'kasungu_weather.json').read_text(encoding='utf-8-sig'))
     days = snapshot['daily'][:3]
     weather = {'mode':'bundled_snapshot', 'start':days[0]['date'][:10], 'end':days[-1]['date'][:10],
                'rain_mm':sum(d['precipitation_sum'] for d in days),
                'heat_c':max(d['temperature_2m_max'] for d in days),
                'location':snapshot['location'], 'timezone':'UTC (source snapshot)',
-               'source':'Tshego’s bundled Open-Meteo snapshot; not a current forecast',
+               'source':'Bundled Open-Meteo snapshot; not a current forecast',
                'soil_source':'Unknown until a successful soil retrieval'}
     farms = json.loads((assets / 'farms.json').read_text(encoding='utf-8-sig'))
     with store.connect() as db:
@@ -135,7 +134,7 @@ def register_felix(app, store, root):
             db.execute('DELETE FROM felix_outcomes')
     app.state.felix_reset = reset
 
-    router = APIRouter(prefix='/api/felix', tags=['Tshego / Kasungu demo'])
+    router = APIRouter(prefix='/api/felix', tags=['Kasungu workspace'])
     evidence = Evidence(store, assets)
 
     def learned_now():
@@ -236,7 +235,7 @@ def register_felix(app, store, root):
                 'visits_per_day':learning.TOP_K,
                 'alerts':[f for f in ranked if f['concern_open']],
                 'plan':[f for f in ranked if f['planned'] and not f['completed']],
-                'demo':True, 'author':'Tshego, supplied ZIP',
+                'demo':True,
                 'score_label':'Illustrative triage points, not a percentage or disease probability'}
 
     @router.post('/farms/{fid}/check-in')

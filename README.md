@@ -15,7 +15,7 @@ Each setting demonstrates a different part of the idea. They are not one system 
 
 | Setting | What it shows | Open it |
 |---|---|---|
-| **Kasungu, Malawi** (Tshego's eight scenario farms) | The officer workflow: timestamped evidence → explained priority → USSD survey → visit → learning from the visit outcome | `/felix` |
+| **Kasungu, Malawi** (eight fictional scenario farms) | The officer workflow: timestamped evidence → explained priority → USSD survey → visit → learning from the visit outcome | `/felix` |
 | **South Africa** (five fictional maize farms) | The crop water model (pyfao56): how a farmer's "irrigation stopped" reply changes water stress and priority | `/` |
 | **Bomet County, Kenya** (100 simulated farms) | A simulation of 7-day reach: how often new fall armyworm and MLN problems get a visit within a week under three scheduling rules | `/simulation` |
 
@@ -36,7 +36,7 @@ Double-click **START-FIELDWISE.cmd** and open **http://127.0.0.1:8765**. Keep th
   .venv/Scripts/python.exe -m pip install -r requirements.txt
   ```
 
-The 6-minute pitch, with clicks and expected numbers, is in [DEMO-SCRIPT.md](DEMO-SCRIPT.md).
+The 6-minute pitch, with clicks and expected numbers, is in [DEMO-SCRIPT.md](docs/DEMO-SCRIPT.md).
 
 ## What works
 
@@ -50,8 +50,8 @@ The 6-minute pitch, with clicks and expected numbers, is in [DEMO-SCRIPT.md](DEM
 | Offline-first | A service worker caches the app. An outbox holds offline actions and syncs each one exactly once. |
 | Officer access | A PIN guards every change and every read of farmer records. Each signed-in request needs both an HttpOnly cookie and a per-device officer token. **Sign out** works offline and from any page: it deletes the token, cached farm records and unsynced actions, ignores responses that were still on their way, and signs out every open tab. Sessions last 12 hours, and five wrong PINs lock sign-in for 5 minutes. |
 | Impact metrics | `/impact`, split into measured outcomes, activity and labelled model estimates. Each metric has a definition, and the de-identified event log is downloadable. |
-| Simulation | `/simulation`: 200 seeded seasons, with an experienced-officer comparison, no-signal controls, ablation, weight sensitivity and a scale test. See [SIMULATION.md](SIMULATION.md). |
-| Water model | pyfao56 water balance for the South Africa farms. See [MODEL.md](MODEL.md). |
+| Simulation | `/simulation`: 200 seeded seasons, with an experienced-officer comparison, no-signal controls, ablation, weight sensitivity and a scale test. See [SIMULATION.md](docs/SIMULATION.md). |
+| Water model | pyfao56 water balance for the South Africa farms. See [MODEL.md](docs/MODEL.md). |
 | Accessibility | axe-core finds 0 WCAG 2.1 AA violations on every page at desktop and mobile sizes. |
 
 ## What the simulation does and doesn't show
@@ -105,12 +105,11 @@ Run the browser scripts against a throwaway server, not the live demo: they rese
 
 ## More detail
 
-- [EVIDENCE-FLOW.md](EVIDENCE-FLOW.md): evidence receipts and the privacy design in the Kasungu workflow.
-- [TSHEGO-INTEGRATION.md](TSHEGO-INTEGRATION.md): how Tshego's Flutter app was adapted.
-- [OFFLINE-AND-IMPACT.md](OFFLINE-AND-IMPACT.md): offline layer and impact metrics.
-- [DISEASE.md](DISEASE.md): disease observations and the UW reference explorer.
-- [DESIGN.md](DESIGN.md): design references.
-- [TRANSLATION.md](TRANSLATION.md): farmer-facing text, ready for a Chichewa translator.
+- [EVIDENCE-FLOW.md](docs/EVIDENCE-FLOW.md): evidence receipts and the privacy design in the Kasungu workflow.
+- [OFFLINE-AND-IMPACT.md](docs/OFFLINE-AND-IMPACT.md): offline layer and impact metrics.
+- [DISEASE.md](docs/DISEASE.md): disease observations and the UW reference explorer.
+- [DESIGN.md](docs/DESIGN.md): design references.
+- [TRANSLATION.md](docs/TRANSLATION.md): farmer-facing text, ready for a Chichewa translator.
 
 ## Sources and licences
 

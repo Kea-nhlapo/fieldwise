@@ -11,7 +11,7 @@ from collections import Counter
 from datetime import datetime, timezone
 from statistics import median
 
-WORKSPACES = {'sa': 'South Africa maize', 'kasungu': 'Kasungu (Tshego)'}
+WORKSPACES = {'sa': 'South Africa maize', 'kasungu': 'Kasungu'}
 
 
 def _metric(id, label, value, unit, definition, numerator=None, denominator=None, group='activity'):

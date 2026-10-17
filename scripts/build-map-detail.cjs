@@ -1,4 +1,4 @@
-// Builds static/tshego/kasungu_detail.json: OpenStreetMap building footprints, parks,
+// Builds static/kasungu/kasungu_detail.json: OpenStreetMap building footprints, parks,
 // named rivers, route numbers and named places around the Kasungu demo farms, so the
 // farm map can draw them offline. Roads cover the padded area so panning past the
 // bundled extract's edge still shows streets. Run once with network access:
@@ -77,7 +77,7 @@ const POI_KINDS = {
       }
     }
   }
-  const file = path.join(__dirname, '..', 'static', 'tshego', 'kasungu_detail.json');
+  const file = path.join(__dirname, '..', 'static', 'kasungu', 'kasungu_detail.json');
   fs.writeFileSync(file, JSON.stringify(out));
   console.log(`${out.buildings.length} buildings, ${out.areas.length} areas, ${out.waters.length} waterways, ${out.roads.length} roads, ${out.pois.length} places of interest, ${out.places.length} settlements → ${file} (${fs.statSync(file).size} bytes)`);
 })().catch(error => { console.error(error); process.exit(1); });
